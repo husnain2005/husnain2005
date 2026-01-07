@@ -1,174 +1,1944 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fire Suppression Suit - Sensor Array</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <title>Fire Suppression Suit - Sensor Array Dashboard</title>
+    <!-- Google Fonts for futuristic typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <style>
+        /* ============================================
+           CSS RESET AND BASE STYLES
+           ============================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Color palette - dark futuristic theme */
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-panel: #141414;
+            --bg-card: #1a1a1a;
+            --bg-card-alt: #1c1c1c;
+            --border-color: #2a2a2a;
+            --border-highlight: #333;
+            --border-active: #00d4ff;
+
+            /* Accent colors */
+            --cyan: #00d4ff;
+            --cyan-dim: #00a8cc;
+            --cyan-glow: rgba(0, 212, 255, 0.4);
+            --orange: #ff6b35;
+            --orange-dim: #cc5529;
+            --orange-glow: rgba(255, 107, 53, 0.4);
+            --green: #00ff88;
+            --green-dim: #00cc6a;
+            --green-glow: rgba(0, 255, 136, 0.4);
+            --yellow: #ffcc00;
+            --red: #ff3333;
+            --blue: #3366ff;
+
+            /* Text colors */
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+            --text-dim: #555555;
+            --text-muted: #444444;
+        }
+
+        html, body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            line-height: 1.4;
+        }
+
+        /* ============================================
+           HEADER / TAB NAVIGATION
+           ============================================ */
+        .header-tabs {
+            display: flex;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            padding: 16px 35px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            background: var(--bg-panel);
+            border: none;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+            border-right: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .tab-btn.active {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--cyan);
+            box-shadow: 0 0 10px var(--cyan-glow);
+        }
+
+        .tab-btn:hover:not(.active) {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        /* ============================================
+           MAIN TITLE BAR
+           ============================================ */
+        .title-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .main-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: 3px;
+            color: var(--text-primary);
+            text-transform: uppercase;
+        }
+
+        .last-update {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+            letter-spacing: 1px;
+        }
+
+        /* ============================================
+           MAIN DASHBOARD GRID LAYOUT
+           ============================================ */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 340px 1fr 300px;
+            gap: 12px;
+            padding: 12px;
+            height: calc(100vh - 95px);
+            min-height: 750px;
+        }
+
+        /* ============================================
+           PANEL BASE STYLES
+           ============================================ */
+        .panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-highlight), transparent);
+            pointer-events: none;
+        }
+
+        .panel-header {
+            padding: 10px 14px;
+            background: rgba(0, 0, 0, 0.4);
+            border-bottom: 1px solid var(--border-color);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--cyan);
+        }
+
+        .panel-content {
+            padding: 12px;
+        }
+
+        /* ============================================
+           LEFT COLUMN - SENSOR PANELS & MAP
+           ============================================ */
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Sensor Grid - 2x2 layout */
+        .sensor-grid-panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+        }
+
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .sensor-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 10px 12px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .sensor-card.highlight {
+            border-color: var(--cyan);
+            box-shadow: inset 0 0 25px rgba(0, 212, 255, 0.08), 0 0 10px rgba(0, 212, 255, 0.1);
+        }
+
+        .sensor-card.warning {
+            border-color: var(--orange);
+            box-shadow: inset 0 0 25px rgba(255, 107, 53, 0.08), 0 0 10px rgba(255, 107, 53, 0.1);
+        }
+
+        .sensor-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 8px;
+            letter-spacing: 1px;
+            color: var(--cyan);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            opacity: 0.9;
+        }
+
+        .sensor-card.warning .sensor-label {
+            color: var(--orange);
+        }
+
+        .sensor-value {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .sensor-value .unit {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-left: 2px;
+        }
+
+        .sensor-readings {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 8px;
+            margin-top: 4px;
+        }
+
+        .sensor-reading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+        }
+
+        .reading-label {
+            color: var(--text-dim);
+            font-size: 9px;
+        }
+
+        .reading-value {
+            color: var(--text-secondary);
+        }
+
+        /* Status indicators row */
+        .sensor-status {
+            display: flex;
+            gap: 6px;
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .status-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+        }
+
+        .status-dot.blue {
+            background: var(--blue);
+            box-shadow: 0 0 8px rgba(51, 102, 255, 0.5);
+        }
+        .status-dot.green {
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green-glow);
+        }
+        .status-dot.orange {
+            background: var(--orange);
+            box-shadow: 0 0 8px var(--orange-glow);
+        }
+
+        /* ============================================
+           MAP SECTION
+           ============================================ */
+        .map-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 280px;
+        }
+
+        .map-container {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+            min-height: 200px;
+        }
+
+        /* Static map placeholder with satellite-style appearance */
+        .map-placeholder {
+            width: 100%;
+            height: 100%;
+            background:
+                linear-gradient(rgba(10, 20, 30, 0.6), rgba(10, 20, 30, 0.6)),
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 40px,
+                    rgba(0, 212, 255, 0.03) 40px,
+                    rgba(0, 212, 255, 0.03) 41px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 40px,
+                    rgba(0, 212, 255, 0.03) 40px,
+                    rgba(0, 212, 255, 0.03) 41px
+                );
+            background-color: #0d1a1a;
+            position: relative;
+        }
+
+        /* Simulated buildings/blocks for map */
+        .map-buildings {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+        }
+
+        .map-block {
+            position: absolute;
+            background: rgba(30, 40, 45, 0.8);
+            border: 1px solid rgba(0, 212, 255, 0.1);
+        }
+
+        /* Road lines */
+        .map-road-h {
+            position: absolute;
+            height: 4px;
+            background: rgba(60, 70, 75, 0.6);
+            left: 0;
+            right: 0;
+        }
+
+        .map-road-v {
+            position: absolute;
+            width: 4px;
+            background: rgba(60, 70, 75, 0.6);
+            top: 0;
+            bottom: 0;
+        }
+
+        .map-marker {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -100%);
+            width: 28px;
+            height: 38px;
+            z-index: 10;
+        }
+
+        .map-marker svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 2px 8px rgba(255, 107, 53, 0.8));
+        }
+
+        .map-marker-pulse {
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 8px;
+            background: radial-gradient(ellipse, rgba(255, 107, 53, 0.6), transparent);
+            border-radius: 50%;
+            animation: markerPulse 2s infinite;
+        }
+
+        @keyframes markerPulse {
+            0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.6; }
+            50% { transform: translateX(-50%) scale(1.8); opacity: 0; }
+        }
+
+        /* GPS Info Panel */
+        .gps-info {
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 12px 14px;
+            margin-top: 10px;
+        }
+
+        .gps-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            letter-spacing: 1.5px;
+            color: var(--cyan);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .gps-coord {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        /* ============================================
+           CENTER COLUMN
+           ============================================ */
+        .center-column {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Top row panels */
+        .center-top-row {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            gap: 12px;
+        }
+
+        /* Motion Data Panel */
+        .motion-panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 14px;
+        }
+
+        .motion-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            color: var(--cyan);
+            margin-bottom: 14px;
+            text-transform: uppercase;
+        }
+
+        .gauges-container {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 12px;
+        }
+
+        .gauge-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .gauge-ring {
+            width: 68px;
+            height: 68px;
+            position: relative;
+        }
+
+        .gauge-ring svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .gauge-ring circle {
+            fill: none;
+            stroke-width: 5;
+        }
+
+        .gauge-ring .gauge-bg {
+            stroke: var(--bg-card);
+        }
+
+        .gauge-ring .gauge-progress {
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.6s ease;
+        }
+
+        .gauge-ring .gauge-progress.cyan {
+            stroke: var(--cyan);
+            filter: drop-shadow(0 0 4px var(--cyan-glow));
+        }
+        .gauge-ring .gauge-progress.orange {
+            stroke: var(--orange);
+            filter: drop-shadow(0 0 4px var(--orange-glow));
+        }
+
+        .gauge-value-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .gauge-number {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .gauge-suffix {
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .gauge-label {
+            font-size: 9px;
+            color: var(--text-dim);
+            margin-top: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .cyto-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 8px;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            text-align: center;
+            margin: 10px 0 8px;
+            text-transform: uppercase;
+        }
+
+        .mini-chart-container {
+            height: 45px;
+            background: var(--bg-card);
+            border-radius: 4px;
+            padding: 4px;
+            position: relative;
+        }
+
+        .mini-chart-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* Temperature Panel in center-top */
+        .temp-panel-top {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .temp-panel-header {
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.4);
+            border-bottom: 1px solid var(--border-color);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            letter-spacing: 1.5px;
+            color: var(--cyan);
+            text-transform: uppercase;
+        }
+
+        .temp-chart-area {
+            padding: 10px;
+            height: 140px;
+            position: relative;
+        }
+
+        /* ============================================
+           SUIT VISUALIZATION AREA
+           ============================================ */
+        .suit-visualization {
+            flex: 1;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            min-height: 400px;
+        }
+
+        .suit-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 20px;
+        }
+
+        .suit-figure-wrapper {
+            position: relative;
+            width: 280px;
+            height: 100%;
+            max-height: 420px;
+        }
+
+        .suit-figure {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Sensor callouts */
+        .callout {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 9px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        .callout.left {
+            flex-direction: row-reverse;
+        }
+
+        .callout-line {
+            width: 35px;
+            height: 1px;
+            background: linear-gradient(90deg, var(--cyan), transparent);
+            position: relative;
+        }
+
+        .callout.left .callout-line {
+            background: linear-gradient(270deg, var(--cyan), transparent);
+        }
+
+        .callout-dot {
+            width: 5px;
+            height: 5px;
+            background: var(--cyan);
+            border-radius: 50%;
+            box-shadow: 0 0 6px var(--cyan-glow);
+            position: absolute;
+        }
+
+        .callout.right .callout-dot {
+            left: 0;
+            top: -2px;
+        }
+
+        .callout.left .callout-dot {
+            right: 0;
+            top: -2px;
+        }
+
+        .callout-text {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 3px 7px;
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+        }
+
+        /* Callout positions */
+        .callout-temp1 { top: 8%; right: 5%; }
+        .callout-temp5 { top: 18%; right: 0; }
+        .callout-mpu1 { top: 42%; left: 5%; }
+        .callout-mpl { top: 48%; right: 0; }
+        .callout-mired { top: 65%; left: 0; }
+        .callout-uni { top: 72%; right: 5%; }
+        .callout-mpu2 { top: 58%; right: -5%; }
+
+        /* Bottom timeline chart */
+        .timeline-section {
+            height: 75px;
+            border-top: 1px solid var(--border-color);
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .timeline-chart-canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* ============================================
+           RIGHT COLUMN
+           ============================================ */
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Temperature Chart Panel */
+        .temp-chart-panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .chart-header {
+            padding: 9px 12px;
+            background: rgba(0, 0, 0, 0.4);
+            border-bottom: 1px solid var(--border-color);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            letter-spacing: 1.5px;
+            color: var(--cyan);
+            text-transform: uppercase;
+        }
+
+        .chart-body {
+            padding: 10px;
+            height: 90px;
+        }
+
+        /* Acceleration Panel */
+        .accel-panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .accel-chart-area {
+            padding: 10px;
+            height: 100px;
+        }
+
+        /* Movement Control Panel */
+        .movement-panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 14px;
+            flex: 1;
+        }
+
+        .movement-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            color: var(--cyan);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        .movement-controller {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .movement-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .move-btn {
+            width: 38px;
+            height: 38px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .move-btn:hover {
+            border-color: var(--green);
+            box-shadow: 0 0 12px var(--green-glow);
+        }
+
+        .move-btn:active {
+            transform: scale(0.95);
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .move-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: var(--green);
+        }
+
+        .movement-center {
+            width: 75px;
+            height: 75px;
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .movement-center::before {
+            content: '';
+            position: absolute;
+            width: 95px;
+            height: 95px;
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+        }
+
+        .movement-center::after {
+            content: '';
+            position: absolute;
+            width: 115px;
+            height: 115px;
+            border: 1px dashed var(--border-color);
+            border-radius: 50%;
+            opacity: 0.4;
+        }
+
+        .operator-icon {
+            width: 36px;
+            height: 36px;
+        }
+
+        .operator-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Data Readout Panel */
+        .readout-panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+        }
+
+        .readout-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .readout-item {
+            text-align: center;
+            padding: 8px;
+            background: var(--bg-card);
+            border-radius: 4px;
+        }
+
+        .readout-value {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .readout-label {
+            font-size: 8px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+
+        /* ============================================
+           CHART AXIS LABELS
+           ============================================ */
+        .axis-labels {
+            position: absolute;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 8px;
+            color: var(--text-dim);
+        }
+
+        .axis-y {
+            left: 2px;
+            top: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 5px 0;
+        }
+
+        .axis-x {
+            bottom: 0;
+            left: 25px;
+            right: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* ============================================
+           ANIMATIONS
+           ============================================ */
+        @keyframes glowPulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        .glow-pulse {
+            animation: glowPulse 2s infinite ease-in-out;
+        }
+
+        @keyframes dataFlash {
+            0% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .data-flash {
+            animation: dataFlash 0.25s ease;
+        }
+
+        /* ============================================
+           SCROLLBAR STYLING
+           ============================================ */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-panel);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-highlight);
+        }
+
+        /* ============================================
+           TAB CONTENT
+           ============================================ */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Suit Visualization Tab */
+        .suit-viz-tab {
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: calc(100vh - 95px);
+        }
+
+        .suit-viz-tab h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 20px;
+            letter-spacing: 3px;
+            color: var(--cyan);
+            margin-bottom: 30px;
+        }
+
+        .suit-3d-container {
+            width: 100%;
+            max-width: 800px;
+            height: 500px;
+            background: var(--bg-panel);
+            border: 2px solid var(--cyan);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .suit-3d-container::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(0, 212, 255, 0.02) 20px, rgba(0, 212, 255, 0.02) 21px),
+                repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(0, 212, 255, 0.02) 20px, rgba(0, 212, 255, 0.02) 21px);
+        }
+
+        /* ============================================
+           RESPONSIVE ADJUSTMENTS
+           ============================================ */
+        @media (max-width: 1400px) {
+            .dashboard {
+                grid-template-columns: 300px 1fr 260px;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto;
+                height: auto;
+            }
+
+            .center-top-row {
+                grid-template-columns: 1fr;
+            }
+
+            .suit-visualization {
+                min-height: 500px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Navigation Tabs -->
-        <div class="nav-tabs">
-            <button class="tab-btn active" data-tab="dashboard">DASHBOARD</button>
-            <button class="tab-btn" data-tab="suit-viz">SUIT VISULIZATION</button>
+    <!-- ============================================
+         HEADER / TAB NAVIGATION
+         ============================================ -->
+    <header class="header-tabs">
+        <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+        <button class="tab-btn" data-tab="suit-viz">Suit Visualization</button>
+    </header>
+
+    <!-- ============================================
+         DASHBOARD TAB
+         ============================================ -->
+    <div class="tab-content active" id="dashboard">
+        <!-- Main Title Bar -->
+        <div class="title-bar">
+            <h1 class="main-title">Fire Suppression Suit · Sensor Array</h1>
+            <span class="last-update" id="lastUpdate">Last Update: 2053-09 13:15:58</span>
         </div>
 
-        <!-- Dashboard Tab Content -->
-        <div class="tab-content active" id="dashboard">
-            <div class="header">
-                <h1>FIRE SUPPRESSION SUIT - SENSOR ARRAY</h1>
-                <div class="last-update">LAST UPDATE: <span id="timestamp">2024-03-15 14:35:15</span></div>
-            </div>
+        <!-- Main Dashboard Grid -->
+        <main class="dashboard">
+            <!-- ============================================
+                 LEFT COLUMN - SENSOR PANELS & MAP
+                 ============================================ -->
+            <section class="left-column">
+                <!-- Sensor Cards Grid Panel -->
+                <div class="sensor-grid-panel">
+                    <div class="sensor-grid">
+                        <!-- Sensor Card 1 - Highlighted cyan -->
+                        <div class="sensor-card highlight">
+                            <div class="sensor-label">DS18B20 DVP1</div>
+                            <div class="sensor-value">362<span class="unit">°C</span></div>
+                            <div class="sensor-readings">
+                                <div class="sensor-reading">
+                                    <span class="reading-label">δ ΔMPS</span>
+                                    <span class="reading-value">96.3 °C</span>
+                                </div>
+                                <div class="sensor-reading">
+                                    <span class="reading-label">MAX</span>
+                                    <span class="reading-value">892 °C</span>
+                                </div>
+                            </div>
+                        </div>
 
-            <div class="dashboard-grid">
-                <!-- Temperature Sensors Section -->
-                <div class="sensors-grid">
-                    <div class="sensor-card">
-                        <div class="sensor-label">DS18B20 DLP 1</div>
-                        <div class="sensor-temp" id="temp1">38.2°C</div>
-                        <div class="sensor-pressure">3 GA kPa</div>
-                        <div class="sensor-sub-temp">96.8°C</div>
-                        <div class="sensor-sub-temp">89.2°C</div>
-                        <div class="sensor-indicators">
-                            <span class="indicator orange"></span>
-                            <span class="indicator orange"></span>
-                            <span class="indicator blue"></span>
+                        <!-- Sensor Card 2 -->
+                        <div class="sensor-card">
+                            <div class="sensor-label">DS18B20 DVP2</div>
+                            <div class="sensor-value">362<span class="unit">°C</span></div>
+                            <div class="sensor-readings">
+                                <div class="sensor-reading">
+                                    <span class="reading-label">δ ΔMPS</span>
+                                    <span class="reading-value">96.3 °C</span>
+                                </div>
+                                <div class="sensor-reading">
+                                    <span class="reading-label">MAX</span>
+                                    <span class="reading-value">892 °C</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sensor Card 3 - Warning orange -->
+                        <div class="sensor-card warning">
+                            <div class="sensor-label">DS18B20 DVP1</div>
+                            <div class="sensor-value">362<span class="unit">°C</span></div>
+                            <div class="sensor-readings">
+                                <div class="sensor-reading">
+                                    <span class="reading-label">δ ΔMPS</span>
+                                    <span class="reading-value">96.3 °C</span>
+                                </div>
+                                <div class="sensor-reading">
+                                    <span class="reading-label">MAX</span>
+                                    <span class="reading-value">987 °C</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sensor Card 4 -->
+                        <div class="sensor-card">
+                            <div class="sensor-label">DS18B20 DVP1</div>
+                            <div class="sensor-value">362<span class="unit">°C</span></div>
+                            <div class="sensor-readings">
+                                <div class="sensor-reading">
+                                    <span class="reading-label">δ ΔMPS</span>
+                                    <span class="reading-value">0.3 °C</span>
+                                </div>
+                                <div class="sensor-reading">
+                                    <span class="reading-label">MAX</span>
+                                    <span class="reading-value">8.8 °C</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="sensor-card">
-                        <div class="sensor-label">DS18B20 DLP 2</div>
-                        <div class="sensor-temp">36.2°C</div>
-                        <div class="sensor-pressure">3 GA kPa</div>
-                        <div class="sensor-sub-temp">96.8°C</div>
-                        <div class="sensor-sub-temp">89.2°C</div>
-                    </div>
-
-                    <div class="sensor-card">
-                        <div class="sensor-label">DS18B20 DLP 3</div>
-                        <div class="sensor-temp">36.2°C</div>
-                        <div class="sensor-pressure">3 GA kPa</div>
-                        <div class="sensor-sub-temp">96.3°C</div>
-                        <div class="sensor-sub-temp">38.7°C</div>
-                    </div>
-
-                    <div class="sensor-card">
-                        <div class="sensor-label">BYPASS DLP 1</div>
-                        <div class="sensor-temp">36.2°C</div>
-                        <div class="sensor-pressure">2 GA kPa</div>
-                        <div class="sensor-sub-temp">0.3°C</div>
-                        <div class="sensor-sub-temp">8.8°C</div>
+                    <!-- Status Indicators -->
+                    <div class="sensor-status">
+                        <div class="status-dot blue"></div>
+                        <div class="status-dot green"></div>
+                        <div class="status-dot orange"></div>
                     </div>
                 </div>
 
                 <!-- Map Section -->
-                <div class="map-container">
-                    <div id="map"></div>
-                    <div class="location-info">
-                        <div class="info-title">CY GYPLUS NED LOCATION</div>
-                        <div>LATITUDE: 19.6558 N</div>
-                        <div>LONGITUDE: 1.18 5877 W</div>
-                    </div>
-                </div>
+                <div class="map-section">
+                    <div class="map-container">
+                        <div class="map-placeholder">
+                            <!-- Simulated satellite map buildings -->
+                            <div class="map-buildings">
+                                <!-- Roads -->
+                                <div class="map-road-h" style="top: 45%;"></div>
+                                <div class="map-road-v" style="left: 35%;"></div>
+                                <div class="map-road-v" style="left: 65%;"></div>
+                                <!-- Buildings -->
+                                <div class="map-block" style="top: 10%; left: 10%; width: 20%; height: 25%;"></div>
+                                <div class="map-block" style="top: 8%; left: 40%; width: 15%; height: 30%;"></div>
+                                <div class="map-block" style="top: 12%; left: 70%; width: 22%; height: 20%;"></div>
+                                <div class="map-block" style="top: 55%; left: 8%; width: 18%; height: 35%;"></div>
+                                <div class="map-block" style="top: 52%; left: 42%; width: 12%; height: 25%;"></div>
+                                <div class="map-block" style="top: 58%; left: 72%; width: 20%; height: 30%;"></div>
+                                <div class="map-block" style="top: 30%; left: 15%; width: 10%; height: 12%;"></div>
+                                <div class="map-block" style="top: 75%; left: 25%; width: 8%; height: 18%;"></div>
+                            </div>
 
-                <!-- Motion Data Section -->
-                <div class="motion-data">
-                    <div class="motion-header">MAX TORSO MOTION DATA</div>
-                    <div class="motion-gauges">
-                        <div class="gauge">
-                            <svg class="gauge-svg" viewBox="0 0 100 100">
-                                <circle class="gauge-bg" cx="50" cy="50" r="40"></circle>
-                                <circle class="gauge-fill" cx="50" cy="50" r="40" id="gauge1"></circle>
-                            </svg>
-                            <div class="gauge-text">
-                                <div class="gauge-value">99%</div>
-                                <div class="gauge-label">Sens</div>
+                            <!-- Location Marker -->
+                            <div class="map-marker">
+                                <svg viewBox="0 0 24 36">
+                                    <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24c0-6.6-5.4-12-12-12zm0 16c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4z" fill="#ff6b35"/>
+                                </svg>
+                                <div class="map-marker-pulse"></div>
                             </div>
                         </div>
-                        <div class="gauge">
-                            <svg class="gauge-svg" viewBox="0 0 100 100">
-                                <circle class="gauge-bg" cx="50" cy="50" r="40"></circle>
-                                <circle class="gauge-fill" cx="50" cy="50" r="40" id="gauge2"></circle>
-                            </svg>
-                            <div class="gauge-text">
-                                <div class="gauge-value">76</div>
+                    </div>
+
+                    <!-- GPS Coordinates Info -->
+                    <div class="gps-info">
+                        <div class="gps-title">CY GPS/US-NEDICATION</div>
+                        <div class="gps-coord">LATITUDE: N 6558 N</div>
+                        <div class="gps-coord">LONGITUDE: 118 5877 W</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================
+                 CENTER COLUMN - MAIN VISUALIZATION
+                 ============================================ -->
+            <section class="center-column">
+                <!-- Top Row: Motion Data + Temp Chart -->
+                <div class="center-top-row">
+                    <!-- Motion Data Panel -->
+                    <div class="motion-panel">
+                        <div class="motion-title">MAX10082 Motion Data</div>
+
+                        <div class="gauges-container">
+                            <!-- Activity Gauge -->
+                            <div class="gauge-wrapper">
+                                <div class="gauge-ring">
+                                    <svg viewBox="0 0 100 100">
+                                        <circle class="gauge-bg" cx="50" cy="50" r="40"/>
+                                        <circle class="gauge-progress cyan" cx="50" cy="50" r="40"
+                                                stroke-dasharray="251.2" stroke-dashoffset="2.5" id="gauge1"/>
+                                    </svg>
+                                    <div class="gauge-value-display">
+                                        <span class="gauge-number" id="gauge1Value">99</span><span class="gauge-suffix">%</span>
+                                    </div>
+                                </div>
+                                <div class="gauge-label">Activity</div>
+                            </div>
+
+                            <!-- BPM Gauge -->
+                            <div class="gauge-wrapper">
+                                <div class="gauge-ring">
+                                    <svg viewBox="0 0 100 100">
+                                        <circle class="gauge-bg" cx="50" cy="50" r="40"/>
+                                        <circle class="gauge-progress orange" cx="50" cy="50" r="40"
+                                                stroke-dasharray="251.2" stroke-dashoffset="65" id="gauge2"/>
+                                    </svg>
+                                    <div class="gauge-value-display">
+                                        <span class="gauge-number" id="gauge2Value">76</span>
+                                    </div>
+                                </div>
                                 <div class="gauge-label">BPM</div>
                             </div>
                         </div>
+
+                        <div class="cyto-label">CYTOCCODE RTICA NANO</div>
+
+                        <!-- Mini Chart -->
+                        <div class="mini-chart-container">
+                            <canvas id="miniChart"></canvas>
+                        </div>
                     </div>
-                    <div class="gyro-label">GYROSCOPE PITCH YAW</div>
-                    <canvas id="gyroChart" class="small-chart"></canvas>
+
+                    <!-- Temperature Panel -->
+                    <div class="temp-panel-top">
+                        <div class="temp-panel-header">DS18B20 Temp 1</div>
+                        <div class="temp-chart-area">
+                            <canvas id="tempChart1"></canvas>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Suit Visualization -->
-                <div class="suit-visual">
-                    <div class="suit-model">
-                        <div class="wireframe-suit"></div>
-                        <div class="sensor-label-overlay top-left">DS18B20 Temp 1</div>
-                        <div class="sensor-label-overlay top-right">DS18B20 Temp 5</div>
-                        <div class="sensor-label-overlay mid-right">MPU6050</div>
-                        <div class="sensor-label-overlay mid-left">MPURESSO</div>
-                        <div class="sensor-label-overlay bottom-left">MHD Temp2</div>
-                        <div class="sensor-label-overlay bottom-right">UNTZ2</div>
+                <div class="suit-visualization">
+                    <div class="suit-container">
+                        <div class="suit-figure-wrapper">
+                            <!-- SVG Wireframe Suit -->
+                            <svg class="suit-figure" viewBox="0 0 300 450" id="suitSVG">
+                                <!-- Definitions for gradients and effects -->
+                                <defs>
+                                    <linearGradient id="cyanGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:0.3"/>
+                                        <stop offset="50%" style="stop-color:#00d4ff;stop-opacity:0.8"/>
+                                        <stop offset="100%" style="stop-color:#00d4ff;stop-opacity:0.3"/>
+                                    </linearGradient>
+                                    <filter id="glow">
+                                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                                        <feMerge>
+                                            <feMergeNode in="coloredBlur"/>
+                                            <feMergeNode in="SourceGraphic"/>
+                                        </feMerge>
+                                    </filter>
+                                </defs>
+
+                                <!-- Helmet -->
+                                <ellipse cx="150" cy="42" rx="38" ry="42" fill="none" stroke="#3a3a3a" stroke-width="1"/>
+                                <ellipse cx="150" cy="42" rx="32" ry="36" fill="none" stroke="#00d4ff" stroke-width="0.5" opacity="0.4"/>
+                                <!-- Visor -->
+                                <path d="M118 28 Q150 14 182 28 Q186 46 182 66 Q150 80 118 66 Q114 46 118 28"
+                                      fill="none" stroke="#00d4ff" stroke-width="1" opacity="0.6"/>
+                                <!-- Helmet grid lines -->
+                                <line x1="150" y1="5" x2="150" y2="80" stroke="#2a2a2a" stroke-width="0.5"/>
+                                <ellipse cx="150" cy="30" rx="30" ry="8" fill="none" stroke="#2a2a2a" stroke-width="0.5"/>
+                                <ellipse cx="150" cy="55" rx="25" ry="6" fill="none" stroke="#2a2a2a" stroke-width="0.5"/>
+
+                                <!-- Neck -->
+                                <rect x="132" y="82" width="36" height="22" fill="none" stroke="#3a3a3a" stroke-width="1"/>
+
+                                <!-- Torso main outline -->
+                                <path d="M95 104 L205 104 L215 175 L220 275 L200 288 L100 288 L80 275 L85 175 Z"
+                                      fill="none" stroke="#3a3a3a" stroke-width="1"/>
+
+                                <!-- Torso wireframe grid -->
+                                <line x1="97" y1="130" x2="203" y2="130" stroke="#2a2a2a" stroke-width="0.5"/>
+                                <line x1="92" y1="160" x2="208" y2="160" stroke="#2a2a2a" stroke-width="0.5"/>
+                                <line x1="88" y1="190" x2="212" y2="190" stroke="#2a2a2a" stroke-width="0.5"/>
+                                <line x1="85" y1="220" x2="215" y2="220" stroke="#2a2a2a" stroke-width="0.5"/>
+                                <line x1="83" y1="250" x2="217" y2="250" stroke="#2a2a2a" stroke-width="0.5"/>
+                                <line x1="150" y1="104" x2="150" y2="288" stroke="#2a2a2a" stroke-width="0.5"/>
+                                <line x1="120" y1="104" x2="115" y2="288" stroke="#2a2a2a" stroke-width="0.3"/>
+                                <line x1="180" y1="104" x2="185" y2="288" stroke="#2a2a2a" stroke-width="0.3"/>
+
+                                <!-- Reflective stripes (orange) -->
+                                <rect x="88" y="195" width="124" height="10" fill="none" stroke="#ff6b35" stroke-width="1.5" opacity="0.7"/>
+                                <rect x="85" y="235" width="130" height="10" fill="none" stroke="#ff6b35" stroke-width="1.5" opacity="0.7"/>
+
+                                <!-- Left Arm -->
+                                <path d="M95 104 L65 116 L35 175 L30 235 L52 240 L70 180 L90 128"
+                                      fill="none" stroke="#3a3a3a" stroke-width="1"/>
+                                <!-- Left arm wireframe -->
+                                <ellipse cx="42" cy="215" rx="14" ry="24" fill="none" stroke="#2a2a2a" stroke-width="0.5"/>
+                                <line x1="55" y1="140" x2="38" y2="200" stroke="#2a2a2a" stroke-width="0.5"/>
+
+                                <!-- Right Arm -->
+                                <path d="M205 104 L235 116 L265 175 L270 235 L248 240 L230 180 L210 128"
+                                      fill="none" stroke="#3a3a3a" stroke-width="1"/>
+                                <!-- Right arm wireframe -->
+                                <ellipse cx="258" cy="215" rx="14" ry="24" fill="none" stroke="#2a2a2a" stroke-width="0.5"/>
+                                <line x1="245" y1="140" x2="262" y2="200" stroke="#2a2a2a" stroke-width="0.5"/>
+
+                                <!-- Left Leg -->
+                                <path d="M100 288 L95 345 L88 415 L112 420 L122 355 L130 292"
+                                      fill="none" stroke="#3a3a3a" stroke-width="1"/>
+                                <line x1="95" y1="320" x2="118" y2="320" stroke="#2a2a2a" stroke-width="0.5"/>
+                                <line x1="92" y1="365" x2="115" y2="365" stroke="#2a2a2a" stroke-width="0.5"/>
+                                <line x1="90" y1="395" x2="113" y2="395" stroke="#2a2a2a" stroke-width="0.5"/>
+
+                                <!-- Right Leg -->
+                                <path d="M200 288 L205 345 L212 415 L188 420 L178 355 L170 292"
+                                      fill="none" stroke="#3a3a3a" stroke-width="1"/>
+                                <line x1="182" y1="320" x2="205" y2="320" stroke="#2a2a2a" stroke-width="0.5"/>
+                                <line x1="185" y1="365" x2="208" y2="365" stroke="#2a2a2a" stroke-width="0.5"/>
+                                <line x1="187" y1="395" x2="210" y2="395" stroke="#2a2a2a" stroke-width="0.5"/>
+
+                                <!-- Boots -->
+                                <ellipse cx="100" cy="428" rx="20" ry="10" fill="none" stroke="#3a3a3a" stroke-width="1"/>
+                                <ellipse cx="200" cy="428" rx="20" ry="10" fill="none" stroke="#3a3a3a" stroke-width="1"/>
+
+                                <!-- Sensor points (animated glowing dots) -->
+                                <circle cx="150" cy="28" r="4" fill="#00d4ff" filter="url(#glow)" class="glow-pulse"/>
+                                <circle cx="150" cy="72" r="3" fill="#00d4ff" filter="url(#glow)" class="glow-pulse"/>
+                                <circle cx="42" cy="200" r="3" fill="#00ff88" filter="url(#glow)" class="glow-pulse"/>
+                                <circle cx="258" cy="200" r="3" fill="#00ff88" filter="url(#glow)" class="glow-pulse"/>
+                                <circle cx="150" cy="175" r="4" fill="#ff6b35" filter="url(#glow)" class="glow-pulse"/>
+                                <circle cx="100" cy="395" r="3" fill="#00d4ff" filter="url(#glow)" class="glow-pulse"/>
+                                <circle cx="200" cy="395" r="3" fill="#00d4ff" filter="url(#glow)" class="glow-pulse"/>
+                                <circle cx="85" cy="250" r="3" fill="#00d4ff" filter="url(#glow)" class="glow-pulse"/>
+                                <circle cx="215" cy="250" r="3" fill="#00d4ff" filter="url(#glow)" class="glow-pulse"/>
+                            </svg>
+
+                            <!-- Sensor Callouts -->
+                            <div class="callout right callout-temp1">
+                                <div class="callout-line"><div class="callout-dot"></div></div>
+                                <div class="callout-text">DS18B20 Temp 1</div>
+                            </div>
+                            <div class="callout right callout-temp5">
+                                <div class="callout-line"><div class="callout-dot"></div></div>
+                                <div class="callout-text">DS18B20 Temp 5</div>
+                            </div>
+                            <div class="callout left callout-mpu1">
+                                <div class="callout-line"><div class="callout-dot"></div></div>
+                                <div class="callout-text">MPU6550</div>
+                            </div>
+                            <div class="callout right callout-mpl">
+                                <div class="callout-line"><div class="callout-dot"></div></div>
+                                <div class="callout-text">MPL311550</div>
+                            </div>
+                            <div class="callout left callout-mired">
+                                <div class="callout-line"><div class="callout-dot"></div></div>
+                                <div class="callout-text">MIRED Temp3</div>
+                            </div>
+                            <div class="callout right callout-uni">
+                                <div class="callout-line"><div class="callout-dot"></div></div>
+                                <div class="callout-text">UNI72</div>
+                            </div>
+                            <div class="callout right callout-mpu2">
+                                <div class="callout-line"><div class="callout-dot"></div></div>
+                                <div class="callout-text">MPU6550</div>
+                            </div>
+                        </div>
                     </div>
-                    <canvas id="tempWaveChart" class="wave-chart"></canvas>
+
+                    <!-- Bottom Timeline Chart -->
+                    <div class="timeline-section">
+                        <canvas id="timelineChart" class="timeline-chart-canvas"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================
+                 RIGHT COLUMN - DATA PANELS
+                 ============================================ -->
+            <section class="right-column">
+                <!-- DS18B20 Temp 5 Chart -->
+                <div class="temp-chart-panel">
+                    <div class="chart-header">DS18B20 Temp 5</div>
+                    <div class="chart-body">
+                        <canvas id="tempChart5"></canvas>
+                    </div>
                 </div>
 
                 <!-- Acceleration Chart -->
-                <div class="acceleration-panel">
-                    <div class="panel-title">ACCELERATION// X, YMM</div>
-                    <canvas id="accelChart" class="chart"></canvas>
-                </div>
-
-                <!-- Operator Movement -->
-                <div class="movement-panel">
-                    <div class="panel-title">OPERATOR MOVEMENT</div>
-                    <div class="movement-control">
-                        <svg class="movement-svg" viewBox="0 0 200 200">
-                            <circle class="movement-bg" cx="100" cy="100" r="80"></circle>
-                            <circle class="movement-center" cx="100" cy="100" r="30"></circle>
-                            <!-- Arrow Indicators -->
-                            <polygon class="arrow up" points="100,20 110,40 90,40" fill="#00ff00"/>
-                            <polygon class="arrow right" points="180,100 160,110 160,90" fill="#00ff00"/>
-                            <polygon class="arrow down" points="100,180 110,160 90,160" fill="#00ff00"/>
-                            <polygon class="arrow left" points="20,100 40,110 40,90" fill="#00ff00"/>
-                            <!-- Operator Icon -->
-                            <g class="operator-icon" transform="translate(100, 100)">
-                                <circle r="8" fill="#ffaa00"/>
-                                <rect x="-6" y="8" width="12" height="15" fill="#ffaa00"/>
-                            </g>
-                        </svg>
+                <div class="accel-panel">
+                    <div class="chart-header">Acceleration / X WMI</div>
+                    <div class="accel-chart-area">
+                        <canvas id="accelChart"></canvas>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Suit Visualization Tab Content -->
-        <div class="tab-content" id="suit-viz">
-            <div class="suit-viz-container">
-                <h2>3D SUIT VISUALIZATION</h2>
-                <div class="suit-3d-view">
-                    <div class="wireframe-suit-large"></div>
+                <!-- Operator Movement Panel -->
+                <div class="movement-panel">
+                    <div class="movement-title">Operator Movement</div>
+                    <div class="movement-controller">
+                        <!-- Up -->
+                        <div class="movement-row">
+                            <div class="move-btn" data-dir="up">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M12 4l-8 8h5v8h6v-8h5z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <!-- Left, Center, Right -->
+                        <div class="movement-row">
+                            <div class="move-btn" data-dir="left">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M4 12l8-8v5h8v6h-8v5z"/>
+                                </svg>
+                            </div>
+                            <div class="movement-center">
+                                <div class="operator-icon">
+                                    <svg viewBox="0 0 24 24">
+                                        <!-- Firefighter icon -->
+                                        <circle cx="12" cy="5" r="4" fill="#ff6b35"/>
+                                        <path d="M7 10h10l2 9H5l2-9z" fill="#ff6b35"/>
+                                        <rect x="3" y="11" width="3" height="6" rx="1" fill="#ff6b35"/>
+                                        <rect x="18" y="11" width="3" height="6" rx="1" fill="#ff6b35"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="move-btn" data-dir="right">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M20 12l-8 8v-5H4v-6h8V4z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <!-- Down -->
+                        <div class="movement-row">
+                            <div class="move-btn" data-dir="down">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M12 20l8-8h-5V4h-6v8H4z"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="sensor-details">
-                    <h3>ACTIVE SENSORS</h3>
-                    <ul>
-                        <li>DS18B20 Temp 1: <span class="status-active">ACTIVE</span></li>
-                        <li>DS18B20 Temp 5: <span class="status-active">ACTIVE</span></li>
-                        <li>MPU6050: <span class="status-active">ACTIVE</span></li>
-                        <li>MPURESSO: <span class="status-active">ACTIVE</span></li>
-                        <li>MHD Temp2: <span class="status-active">ACTIVE</span></li>
-                        <li>UNTZ2: <span class="status-active">ACTIVE</span></li>
-                    </ul>
+
+                <!-- Data Readouts -->
+                <div class="readout-panel">
+                    <div class="readout-grid">
+                        <div class="readout-item">
+                            <div class="readout-value" id="readout1">15</div>
+                            <div class="readout-label">X-Axis</div>
+                        </div>
+                        <div class="readout-item">
+                            <div class="readout-value" id="readout2">03</div>
+                            <div class="readout-label">Y-Axis</div>
+                        </div>
+                        <div class="readout-item">
+                            <div class="readout-value" id="readout3">46</div>
+                            <div class="readout-label">Z-Axis</div>
+                        </div>
+                        <div class="readout-item">
+                            <div class="readout-value" id="readout4">0</div>
+                            <div class="readout-label">Delta</div>
+                        </div>
+                    </div>
                 </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ============================================
+         SUIT VISUALIZATION TAB
+         ============================================ -->
+    <div class="tab-content" id="suit-viz">
+        <div class="suit-viz-tab">
+            <h2>3D SUIT VISUALIZATION</h2>
+            <div class="suit-3d-container">
+                <!-- Larger suit SVG for visualization tab -->
+                <svg viewBox="0 0 300 450" style="width: 350px; height: 500px;">
+                    <!-- Same suit SVG structure -->
+                    <defs>
+                        <filter id="glowLarge">
+                            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+
+                    <!-- Helmet -->
+                    <ellipse cx="150" cy="42" rx="38" ry="42" fill="none" stroke="#00d4ff" stroke-width="1.5" filter="url(#glowLarge)"/>
+                    <ellipse cx="150" cy="42" rx="32" ry="36" fill="none" stroke="#00d4ff" stroke-width="0.5" opacity="0.5"/>
+                    <path d="M118 28 Q150 14 182 28 Q186 46 182 66 Q150 80 118 66 Q114 46 118 28"
+                          fill="none" stroke="#00d4ff" stroke-width="1.5" opacity="0.8"/>
+
+                    <!-- Neck -->
+                    <rect x="132" y="82" width="36" height="22" fill="none" stroke="#00d4ff" stroke-width="1"/>
+
+                    <!-- Torso -->
+                    <path d="M95 104 L205 104 L215 175 L220 275 L200 288 L100 288 L80 275 L85 175 Z"
+                          fill="none" stroke="#00d4ff" stroke-width="1.5" filter="url(#glowLarge)"/>
+
+                    <!-- Grid lines -->
+                    <line x1="97" y1="130" x2="203" y2="130" stroke="#00d4ff" stroke-width="0.3" opacity="0.5"/>
+                    <line x1="92" y1="160" x2="208" y2="160" stroke="#00d4ff" stroke-width="0.3" opacity="0.5"/>
+                    <line x1="88" y1="190" x2="212" y2="190" stroke="#00d4ff" stroke-width="0.3" opacity="0.5"/>
+                    <line x1="85" y1="220" x2="215" y2="220" stroke="#00d4ff" stroke-width="0.3" opacity="0.5"/>
+                    <line x1="83" y1="250" x2="217" y2="250" stroke="#00d4ff" stroke-width="0.3" opacity="0.5"/>
+                    <line x1="150" y1="104" x2="150" y2="288" stroke="#00d4ff" stroke-width="0.3" opacity="0.5"/>
+
+                    <!-- Reflective stripes -->
+                    <rect x="88" y="195" width="124" height="10" fill="none" stroke="#ff6b35" stroke-width="2" opacity="0.8"/>
+                    <rect x="85" y="235" width="130" height="10" fill="none" stroke="#ff6b35" stroke-width="2" opacity="0.8"/>
+
+                    <!-- Arms -->
+                    <path d="M95 104 L65 116 L35 175 L30 235 L52 240 L70 180 L90 128"
+                          fill="none" stroke="#00d4ff" stroke-width="1.5" filter="url(#glowLarge)"/>
+                    <path d="M205 104 L235 116 L265 175 L270 235 L248 240 L230 180 L210 128"
+                          fill="none" stroke="#00d4ff" stroke-width="1.5" filter="url(#glowLarge)"/>
+
+                    <!-- Legs -->
+                    <path d="M100 288 L95 345 L88 415 L112 420 L122 355 L130 292"
+                          fill="none" stroke="#00d4ff" stroke-width="1.5" filter="url(#glowLarge)"/>
+                    <path d="M200 288 L205 345 L212 415 L188 420 L178 355 L170 292"
+                          fill="none" stroke="#00d4ff" stroke-width="1.5" filter="url(#glowLarge)"/>
+
+                    <!-- Boots -->
+                    <ellipse cx="100" cy="428" rx="20" ry="10" fill="none" stroke="#00d4ff" stroke-width="1.5"/>
+                    <ellipse cx="200" cy="428" rx="20" ry="10" fill="none" stroke="#00d4ff" stroke-width="1.5"/>
+
+                    <!-- Sensor points -->
+                    <circle cx="150" cy="28" r="5" fill="#00d4ff" filter="url(#glowLarge)" class="glow-pulse"/>
+                    <circle cx="42" cy="200" r="4" fill="#00ff88" filter="url(#glowLarge)" class="glow-pulse"/>
+                    <circle cx="258" cy="200" r="4" fill="#00ff88" filter="url(#glowLarge)" class="glow-pulse"/>
+                    <circle cx="150" cy="175" r="5" fill="#ff6b35" filter="url(#glowLarge)" class="glow-pulse"/>
+                </svg>
             </div>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <!-- ============================================
+         JAVASCRIPT - CHARTS AND INTERACTIONS
+         ============================================ -->
+    <script>
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+
+        /**
+         * Generate random data points for chart visualization
+         * @param {number} count - Number of data points
+         * @param {number} min - Minimum value
+         * @param {number} max - Maximum value
+         * @returns {number[]} Array of data points
+         */
+        function generateData(count, min, max) {
+            const data = [];
+            let value = (min + max) / 2;
+            for (let i = 0; i < count; i++) {
+                value += (Math.random() - 0.5) * (max - min) * 0.25;
+                value = Math.max(min, Math.min(max, value));
+                data.push(value);
+            }
+            return data;
+        }
+
+        /**
+         * Setup canvas for high-DPI displays
+         * @param {HTMLCanvasElement} canvas
+         * @param {number} width
+         * @param {number} height
+         */
+        function setupCanvas(canvas, width, height) {
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+            return ctx;
+        }
+
+        /**
+         * Draw a line chart with fill
+         * @param {HTMLCanvasElement} canvas
+         * @param {number[]} data
+         * @param {Object} options
+         */
+        function drawLineChart(canvas, data, options = {}) {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const width = rect.width;
+            const height = rect.height;
+
+            const ctx = setupCanvas(canvas, width, height);
+            const padding = options.padding || 8;
+            const strokeColor = options.color || '#00d4ff';
+            const fillColor = options.fill || 'rgba(0, 212, 255, 0.1)';
+            const lineWidth = options.lineWidth || 1.5;
+            const showGrid = options.showGrid !== false;
+
+            // Clear
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw grid
+            if (showGrid) {
+                ctx.strokeStyle = '#1a1a1a';
+                ctx.lineWidth = 0.5;
+                for (let i = 0; i <= 4; i++) {
+                    const y = padding + (height - padding * 2) * (i / 4);
+                    ctx.beginPath();
+                    ctx.moveTo(padding, y);
+                    ctx.lineTo(width - padding, y);
+                    ctx.stroke();
+                }
+            }
+
+            // Calculate scale
+            const minVal = Math.min(...data);
+            const maxVal = Math.max(...data);
+            const range = maxVal - minVal || 1;
+            const xStep = (width - padding * 2) / (data.length - 1);
+
+            // Draw fill area
+            ctx.beginPath();
+            data.forEach((value, index) => {
+                const x = padding + index * xStep;
+                const y = height - padding - ((value - minVal) / range) * (height - padding * 2);
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.lineTo(width - padding, height - padding);
+            ctx.lineTo(padding, height - padding);
+            ctx.closePath();
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+
+            // Draw line with glow
+            ctx.beginPath();
+            data.forEach((value, index) => {
+                const x = padding + index * xStep;
+                const y = height - padding - ((value - minVal) / range) * (height - padding * 2);
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = lineWidth;
+            ctx.shadowColor = strokeColor;
+            ctx.shadowBlur = 6;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        /**
+         * Draw multi-line chart for acceleration data
+         * @param {HTMLCanvasElement} canvas
+         * @param {Object[]} datasets
+         * @param {Object} options
+         */
+        function drawMultiLineChart(canvas, datasets, options = {}) {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const width = rect.width;
+            const height = rect.height;
+
+            const ctx = setupCanvas(canvas, width, height);
+            const padding = options.padding || 8;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw grid
+            ctx.strokeStyle = '#1a1a1a';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= 4; i++) {
+                const y = padding + (height - padding * 2) * (i / 4);
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(width - padding, y);
+                ctx.stroke();
+            }
+
+            // Draw each line
+            datasets.forEach(dataset => {
+                const data = dataset.data;
+                const minVal = Math.min(...data);
+                const maxVal = Math.max(...data);
+                const range = maxVal - minVal || 1;
+                const xStep = (width - padding * 2) / (data.length - 1);
+
+                ctx.beginPath();
+                data.forEach((value, index) => {
+                    const x = padding + index * xStep;
+                    const y = height - padding - ((value - minVal) / range) * (height - padding * 2);
+                    if (index === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+                ctx.strokeStyle = dataset.color;
+                ctx.lineWidth = 1.5;
+                ctx.shadowColor = dataset.color;
+                ctx.shadowBlur = 4;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            });
+        }
+
+        // ============================================
+        // INITIALIZE CHARTS
+        // ============================================
+
+        function initCharts() {
+            // Mini Chart (Motion Panel)
+            const miniChart = document.getElementById('miniChart');
+            if (miniChart) {
+                drawLineChart(miniChart, generateData(40, 20, 80), {
+                    color: '#00ff88',
+                    fill: 'rgba(0, 255, 136, 0.1)',
+                    lineWidth: 1.5,
+                    padding: 4
+                });
+            }
+
+            // Temperature Chart 1
+            const tempChart1 = document.getElementById('tempChart1');
+            if (tempChart1) {
+                drawLineChart(tempChart1, generateData(60, 280, 400), {
+                    color: '#00d4ff',
+                    fill: 'rgba(0, 212, 255, 0.08)',
+                    lineWidth: 1.5
+                });
+            }
+
+            // Temperature Chart 5
+            const tempChart5 = document.getElementById('tempChart5');
+            if (tempChart5) {
+                drawLineChart(tempChart5, generateData(45, 220, 380), {
+                    color: '#ff6b35',
+                    fill: 'rgba(255, 107, 53, 0.08)',
+                    lineWidth: 1.5
+                });
+            }
+
+            // Acceleration Chart
+            const accelChart = document.getElementById('accelChart');
+            if (accelChart) {
+                drawMultiLineChart(accelChart, [
+                    { data: generateData(50, -12, 12), color: '#ff6b35' },
+                    { data: generateData(50, -12, 12), color: '#00ff88' },
+                    { data: generateData(50, -12, 12), color: '#00d4ff' }
+                ]);
+            }
+
+            // Timeline Chart
+            const timelineChart = document.getElementById('timelineChart');
+            if (timelineChart) {
+                drawMultiLineChart(timelineChart, [
+                    { data: generateData(100, 0, 100), color: '#00ff88' },
+                    { data: generateData(100, 0, 100), color: '#ff6b35' }
+                ], { padding: 5 });
+            }
+        }
+
+        // ============================================
+        // REAL-TIME DATA UPDATES
+        // ============================================
+
+        function updateTimestamp() {
+            const now = new Date();
+            const year = 2053; // Futuristic year for theming
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+
+            const elem = document.getElementById('lastUpdate');
+            if (elem) {
+                elem.textContent = `Last Update: ${year}-${month} ${hours}:${minutes}:${seconds}`;
+            }
+        }
+
+        function updateSensorValues() {
+            // Update temperature sensor values with slight variations
+            const sensorValues = document.querySelectorAll('.sensor-value');
+            sensorValues.forEach(elem => {
+                const base = 362;
+                const variation = Math.floor(Math.random() * 8) - 4;
+                elem.innerHTML = (base + variation) + '<span class="unit">°C</span>';
+                elem.classList.add('data-flash');
+                setTimeout(() => elem.classList.remove('data-flash'), 250);
+            });
+
+            // Update gauge values
+            const gauge1Value = 95 + Math.floor(Math.random() * 5);
+            const gauge2Value = 72 + Math.floor(Math.random() * 8);
+
+            document.getElementById('gauge1Value').textContent = gauge1Value;
+            document.getElementById('gauge2Value').textContent = gauge2Value;
+
+            // Update gauge SVG stroke-dashoffset
+            const circumference = 2 * Math.PI * 40; // r=40
+            document.getElementById('gauge1').style.strokeDashoffset =
+                circumference - (gauge1Value / 100) * circumference;
+            document.getElementById('gauge2').style.strokeDashoffset =
+                circumference - (gauge2Value / 100) * circumference;
+
+            // Update readout values
+            document.getElementById('readout1').textContent = Math.floor(Math.random() * 20);
+            document.getElementById('readout2').textContent = String(Math.floor(Math.random() * 10)).padStart(2, '0');
+            document.getElementById('readout3').textContent = Math.floor(Math.random() * 50) + 30;
+            document.getElementById('readout4').textContent = Math.floor(Math.random() * 5);
+        }
+
+        function updateCharts() {
+            // Refresh charts with new data
+            const miniChart = document.getElementById('miniChart');
+            if (miniChart) {
+                drawLineChart(miniChart, generateData(40, 20, 80), {
+                    color: '#00ff88',
+                    fill: 'rgba(0, 255, 136, 0.1)',
+                    lineWidth: 1.5,
+                    padding: 4
+                });
+            }
+
+            const accelChart = document.getElementById('accelChart');
+            if (accelChart) {
+                drawMultiLineChart(accelChart, [
+                    { data: generateData(50, -12, 12), color: '#ff6b35' },
+                    { data: generateData(50, -12, 12), color: '#00ff88' },
+                    { data: generateData(50, -12, 12), color: '#00d4ff' }
+                ]);
+            }
+
+            const timelineChart = document.getElementById('timelineChart');
+            if (timelineChart) {
+                drawMultiLineChart(timelineChart, [
+                    { data: generateData(100, 0, 100), color: '#00ff88' },
+                    { data: generateData(100, 0, 100), color: '#ff6b35' }
+                ], { padding: 5 });
+            }
+        }
+
+        // ============================================
+        // TAB SWITCHING
+        // ============================================
+
+        function initTabs() {
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tabId = btn.dataset.tab;
+
+                    // Update active states
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+
+                    btn.classList.add('active');
+                    document.getElementById(tabId).classList.add('active');
+
+                    // Reinitialize charts when switching to dashboard
+                    if (tabId === 'dashboard') {
+                        setTimeout(initCharts, 100);
+                    }
+                });
+            });
+        }
+
+        // ============================================
+        // MOVEMENT BUTTON INTERACTIONS
+        // ============================================
+
+        function initMovementControls() {
+            const moveBtns = document.querySelectorAll('.move-btn');
+
+            moveBtns.forEach(btn => {
+                btn.addEventListener('mousedown', () => {
+                    btn.style.transform = 'scale(0.92)';
+                    btn.style.background = 'rgba(0, 255, 136, 0.15)';
+                });
+
+                btn.addEventListener('mouseup', () => {
+                    btn.style.transform = '';
+                    btn.style.background = '';
+                });
+
+                btn.addEventListener('mouseleave', () => {
+                    btn.style.transform = '';
+                    btn.style.background = '';
+                });
+            });
+        }
+
+        // ============================================
+        // WINDOW RESIZE HANDLER
+        // ============================================
+
+        let resizeTimeout;
+        function handleResize() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                initCharts();
+            }, 150);
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize components
+            initTabs();
+            initMovementControls();
+
+            // Initialize charts with slight delay for DOM rendering
+            setTimeout(initCharts, 100);
+
+            // Start update intervals
+            setInterval(updateTimestamp, 1000);
+            setInterval(updateSensorValues, 2500);
+            setInterval(updateCharts, 4000);
+
+            // Initial timestamp
+            updateTimestamp();
+
+            // Handle resize
+            window.addEventListener('resize', handleResize);
+        });
+
+        // Log initialization
+        console.log('Fire Suppression Suit Dashboard - Initialized');
+        console.log('Real-time sensor monitoring active');
+    </script>
 </body>
 </html>

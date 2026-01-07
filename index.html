@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fire Suppression Suit - Sensor Array</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" data-tab="dashboard">DASHBOARD</button>
+            <button class="tab-btn" data-tab="suit-viz">SUIT VISULIZATION</button>
+        </div>
+
+        <!-- Dashboard Tab Content -->
+        <div class="tab-content active" id="dashboard">
+            <div class="header">
+                <h1>FIRE SUPPRESSION SUIT - SENSOR ARRAY</h1>
+                <div class="last-update">LAST UPDATE: <span id="timestamp">2024-03-15 14:35:15</span></div>
+            </div>
+
+            <div class="dashboard-grid">
+                <!-- Temperature Sensors Section -->
+                <div class="sensors-grid">
+                    <div class="sensor-card">
+                        <div class="sensor-label">DS18B20 DLP 1</div>
+                        <div class="sensor-temp" id="temp1">38.2°C</div>
+                        <div class="sensor-pressure">3 GA kPa</div>
+                        <div class="sensor-sub-temp">96.8°C</div>
+                        <div class="sensor-sub-temp">89.2°C</div>
+                        <div class="sensor-indicators">
+                            <span class="indicator orange"></span>
+                            <span class="indicator orange"></span>
+                            <span class="indicator blue"></span>
+                        </div>
+                    </div>
+
+                    <div class="sensor-card">
+                        <div class="sensor-label">DS18B20 DLP 2</div>
+                        <div class="sensor-temp">36.2°C</div>
+                        <div class="sensor-pressure">3 GA kPa</div>
+                        <div class="sensor-sub-temp">96.8°C</div>
+                        <div class="sensor-sub-temp">89.2°C</div>
+                    </div>
+
+                    <div class="sensor-card">
+                        <div class="sensor-label">DS18B20 DLP 3</div>
+                        <div class="sensor-temp">36.2°C</div>
+                        <div class="sensor-pressure">3 GA kPa</div>
+                        <div class="sensor-sub-temp">96.3°C</div>
+                        <div class="sensor-sub-temp">38.7°C</div>
+                    </div>
+
+                    <div class="sensor-card">
+                        <div class="sensor-label">BYPASS DLP 1</div>
+                        <div class="sensor-temp">36.2°C</div>
+                        <div class="sensor-pressure">2 GA kPa</div>
+                        <div class="sensor-sub-temp">0.3°C</div>
+                        <div class="sensor-sub-temp">8.8°C</div>
+                    </div>
+                </div>
+
+                <!-- Map Section -->
+                <div class="map-container">
+                    <div id="map"></div>
+                    <div class="location-info">
+                        <div class="info-title">CY GYPLUS NED LOCATION</div>
+                        <div>LATITUDE: 19.6558 N</div>
+                        <div>LONGITUDE: 1.18 5877 W</div>
+                    </div>
+                </div>
+
+                <!-- Motion Data Section -->
+                <div class="motion-data">
+                    <div class="motion-header">MAX TORSO MOTION DATA</div>
+                    <div class="motion-gauges">
+                        <div class="gauge">
+                            <svg class="gauge-svg" viewBox="0 0 100 100">
+                                <circle class="gauge-bg" cx="50" cy="50" r="40"></circle>
+                                <circle class="gauge-fill" cx="50" cy="50" r="40" id="gauge1"></circle>
+                            </svg>
+                            <div class="gauge-text">
+                                <div class="gauge-value">99%</div>
+                                <div class="gauge-label">Sens</div>
+                            </div>
+                        </div>
+                        <div class="gauge">
+                            <svg class="gauge-svg" viewBox="0 0 100 100">
+                                <circle class="gauge-bg" cx="50" cy="50" r="40"></circle>
+                                <circle class="gauge-fill" cx="50" cy="50" r="40" id="gauge2"></circle>
+                            </svg>
+                            <div class="gauge-text">
+                                <div class="gauge-value">76</div>
+                                <div class="gauge-label">BPM</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="gyro-label">GYROSCOPE PITCH YAW</div>
+                    <canvas id="gyroChart" class="small-chart"></canvas>
+                </div>
+
+                <!-- Suit Visualization -->
+                <div class="suit-visual">
+                    <div class="suit-model">
+                        <div class="wireframe-suit"></div>
+                        <div class="sensor-label-overlay top-left">DS18B20 Temp 1</div>
+                        <div class="sensor-label-overlay top-right">DS18B20 Temp 5</div>
+                        <div class="sensor-label-overlay mid-right">MPU6050</div>
+                        <div class="sensor-label-overlay mid-left">MPURESSO</div>
+                        <div class="sensor-label-overlay bottom-left">MHD Temp2</div>
+                        <div class="sensor-label-overlay bottom-right">UNTZ2</div>
+                    </div>
+                    <canvas id="tempWaveChart" class="wave-chart"></canvas>
+                </div>
+
+                <!-- Acceleration Chart -->
+                <div class="acceleration-panel">
+                    <div class="panel-title">ACCELERATION// X, YMM</div>
+                    <canvas id="accelChart" class="chart"></canvas>
+                </div>
+
+                <!-- Operator Movement -->
+                <div class="movement-panel">
+                    <div class="panel-title">OPERATOR MOVEMENT</div>
+                    <div class="movement-control">
+                        <svg class="movement-svg" viewBox="0 0 200 200">
+                            <circle class="movement-bg" cx="100" cy="100" r="80"></circle>
+                            <circle class="movement-center" cx="100" cy="100" r="30"></circle>
+                            <!-- Arrow Indicators -->
+                            <polygon class="arrow up" points="100,20 110,40 90,40" fill="#00ff00"/>
+                            <polygon class="arrow right" points="180,100 160,110 160,90" fill="#00ff00"/>
+                            <polygon class="arrow down" points="100,180 110,160 90,160" fill="#00ff00"/>
+                            <polygon class="arrow left" points="20,100 40,110 40,90" fill="#00ff00"/>
+                            <!-- Operator Icon -->
+                            <g class="operator-icon" transform="translate(100, 100)">
+                                <circle r="8" fill="#ffaa00"/>
+                                <rect x="-6" y="8" width="12" height="15" fill="#ffaa00"/>
+                            </g>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Suit Visualization Tab Content -->
+        <div class="tab-content" id="suit-viz">
+            <div class="suit-viz-container">
+                <h2>3D SUIT VISUALIZATION</h2>
+                <div class="suit-3d-view">
+                    <div class="wireframe-suit-large"></div>
+                </div>
+                <div class="sensor-details">
+                    <h3>ACTIVE SENSORS</h3>
+                    <ul>
+                        <li>DS18B20 Temp 1: <span class="status-active">ACTIVE</span></li>
+                        <li>DS18B20 Temp 5: <span class="status-active">ACTIVE</span></li>
+                        <li>MPU6050: <span class="status-active">ACTIVE</span></li>
+                        <li>MPURESSO: <span class="status-active">ACTIVE</span></li>
+                        <li>MHD Temp2: <span class="status-active">ACTIVE</span></li>
+                        <li>UNTZ2: <span class="status-active">ACTIVE</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

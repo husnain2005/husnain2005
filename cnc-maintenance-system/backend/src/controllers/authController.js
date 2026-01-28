@@ -1,9 +1,21 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/database');
+const { generateCsrfToken, setCsrfCookie } = require('../middleware/csrf');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+
+/**
+ * Cookie options for the JWT HttpOnly cookie.
+ */
+const jwtCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict',
+  maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  path: '/'
+};
 
 /**
  * User login
@@ -22,7 +34,7 @@ const login = async (req, res) => {
 
     // Find user by username, email, or user_id
     const result = await db.query(
-      `SELECT id, user_id, username, email, password_hash, full_name, role, is_active
+      `SELECT id, user_id, username, email, password_hash, full_name, role, is_active, mfa_enabled
        FROM users
        WHERE username = $1 OR email = $1 OR user_id = $1`,
       [username]
@@ -54,6 +66,15 @@ const login = async (req, res) => {
       });
     }
 
+    // Check if MFA is enabled
+    if (user.mfa_enabled) {
+      return res.json({
+        mfa_required: true,
+        userId: user.id,
+        message: 'Inserisci il codice di autenticazione a due fattori'
+      });
+    }
+
     // Update last login
     await db.query(
       'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1',
@@ -72,9 +93,18 @@ const login = async (req, res) => {
       { expiresIn: JWT_EXPIRES_IN }
     );
 
+    // Set JWT as HttpOnly cookie
+    res.cookie('jwt_token', token, jwtCookieOptions);
+
+    // Generate and set CSRF token (readable by JS)
+    const csrfToken = generateCsrfToken();
+    setCsrfCookie(res, csrfToken);
+
+    // Return token in body as well for backwards compatibility (API clients)
     res.json({
       message: 'Login effettuato con successo',
       token,
+      csrfToken,
       user: {
         id: user.id,
         user_id: user.user_id,
@@ -92,6 +122,33 @@ const login = async (req, res) => {
       message: 'Errore durante il login'
     });
   }
+};
+
+/**
+ * User logout
+ * POST /api/auth/logout
+ * Clears the JWT cookie and CSRF cookie.
+ */
+const logout = (req, res) => {
+  // Clear JWT cookie
+  res.clearCookie('jwt_token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/'
+  });
+
+  // Clear CSRF cookie
+  res.clearCookie('csrf_token', {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/'
+  });
+
+  res.json({
+    message: 'Logout effettuato con successo'
+  });
 };
 
 /**
@@ -321,6 +378,7 @@ const updateUser = async (req, res) => {
 
 module.exports = {
   login,
+  logout,
   getProfile,
   changePassword,
   getUsers,

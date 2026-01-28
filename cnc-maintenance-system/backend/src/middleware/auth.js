@@ -4,21 +4,43 @@ const db = require('../config/database');
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
 
 /**
+ * Extract JWT token from the request.
+ * Priority:
+ *   1. HttpOnly cookie "jwt_token" (browser sessions)
+ *   2. Authorization: Bearer <token> header (API clients / backwards compat)
+ *
+ * Returns { token, source } where source is 'cookie' | 'header' | null.
+ */
+const extractToken = (req) => {
+  // 1. Try cookie first
+  if (req.cookies && req.cookies.jwt_token) {
+    return { token: req.cookies.jwt_token, source: 'cookie' };
+  }
+
+  // 2. Fallback to Authorization header
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return { token: authHeader.split(' ')[1], source: 'header' };
+  }
+
+  return { token: null, source: null };
+};
+
+/**
  * Authentication middleware
- * Verifies JWT token and attaches user to request
+ * Verifies JWT token from cookie or header, and attaches user to request.
  */
 const authenticate = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    const { token, source } = extractToken(req);
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!token) {
       return res.status(401).json({
         error: 'Accesso non autorizzato',
         message: 'Token di autenticazione mancante'
       });
     }
 
-    const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
 
     // Fetch user from database
@@ -44,6 +66,7 @@ const authenticate = async (req, res, next) => {
     }
 
     req.user = user;
+    req.authSource = source; // 'cookie' or 'header'
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -91,17 +114,17 @@ const authorize = (...allowedRoles) => {
 };
 
 /**
- * Optional authentication - doesn't fail if no token
+ * Optional authentication - doesn't fail if no token.
+ * Tries cookie first, then Authorization header.
  */
 const optionalAuth = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    const { token, source } = extractToken(req);
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!token) {
       return next();
     }
 
-    const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
 
     const result = await db.query(
@@ -111,6 +134,7 @@ const optionalAuth = async (req, res, next) => {
 
     if (result.rows.length > 0 && result.rows[0].is_active) {
       req.user = result.rows[0];
+      req.authSource = source;
     }
 
     next();

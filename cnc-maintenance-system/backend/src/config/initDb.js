@@ -103,6 +103,9 @@ const initializeDatabase = async () => {
         is_active BOOLEAN DEFAULT true,
         last_login TIMESTAMP WITH TIME ZONE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        mfa_secret VARCHAR(255),
+        mfa_enabled BOOLEAN DEFAULT false,
+        mfa_backup_codes TEXT[],
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);

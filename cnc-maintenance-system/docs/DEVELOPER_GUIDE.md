@@ -10,11 +10,12 @@ Guida tecnica per sviluppatori che vogliono estendere, modificare o contribuire 
 2. [Architettura del Codice](#2-architettura-del-codice)
 3. [Backend Development](#3-backend-development)
 4. [Frontend Development](#4-frontend-development)
-5. [Database Migrations](#5-database-migrations)
-6. [Testing](#6-testing)
-7. [Estensioni Comuni](#7-estensioni-comuni)
-8. [Best Practices](#8-best-practices)
-9. [Troubleshooting](#9-troubleshooting)
+5. [PWA e Offline Development](#5-pwa-e-offline-development)
+6. [Database Migrations](#6-database-migrations)
+7. [Testing](#7-testing)
+8. [Estensioni Comuni](#8-estensioni-comuni)
+9. [Best Practices](#9-best-practices)
+10. [Troubleshooting](#10-troubleshooting)
 
 ---
 
@@ -123,10 +124,12 @@ backend/
 │   ├── config/
 │   │   ├── database.js      # Pool connessioni PostgreSQL
 │   │   ├── initDb.js        # Schema DDL
-│   │   └── seedData.js      # Dati demo
+│   │   ├── seedData.js      # Dati demo
+│   │   └── logger.js        # Winston logger configuration
 │   │
 │   ├── controllers/         # Business logic
 │   │   ├── authController.js
+│   │   ├── mfaController.js     # Multi-Factor Authentication
 │   │   ├── machinesController.js
 │   │   ├── issuesController.js
 │   │   ├── customersController.js
@@ -135,7 +138,9 @@ backend/
 │   │   └── auditController.js
 │   │
 │   ├── middleware/
-│   │   ├── auth.js          # JWT authentication
+│   │   ├── auth.js          # JWT authentication (HTTPOnly cookie)
+│   │   ├── csrf.js          # CSRF protection (Double Submit Cookie)
+│   │   ├── antivirus.js     # ClamAV file scanning
 │   │   ├── audit.js         # Audit logging
 │   │   └── upload.js        # Multer config
 │   │
@@ -155,6 +160,11 @@ backend/
 │   ├── thumbnails/
 │   └── pdfs/
 │
+├── logs/                     # Log files (auto-generated)
+│   ├── combined.log
+│   ├── error.log
+│   └── security.log
+│
 ├── package.json
 ├── Dockerfile
 └── .env.example
@@ -166,10 +176,17 @@ backend/
 frontend/
 ├── src/
 │   ├── components/
-│   │   └── Layout.jsx       # Main layout with sidebar
+│   │   ├── Layout.jsx           # Main layout with sidebar
+│   │   ├── OfflineBanner.jsx    # Offline status indicator
+│   │   ├── InstallPrompt.jsx    # PWA install prompt
+│   │   └── UpdatePrompt.jsx     # Service Worker update notification
 │   │
 │   ├── context/
-│   │   └── AuthContext.jsx  # Authentication state
+│   │   └── AuthContext.jsx      # Authentication state (HTTPOnly cookie)
+│   │
+│   ├── hooks/
+│   │   ├── useOnlineStatus.js   # Network status hook
+│   │   └── usePWA.js            # PWA installation hook
 │   │
 │   ├── pages/
 │   │   ├── Login.jsx
@@ -185,15 +202,21 @@ frontend/
 │   │   └── Users.jsx
 │   │
 │   ├── services/
-│   │   └── api.js           # Axios client & API helpers
+│   │   ├── api.js               # Axios client (CSRF, HTTPOnly cookies)
+│   │   ├── offlineDb.js         # IndexedDB with Dexie.js
+│   │   ├── offlineApi.js        # Offline-aware API wrapper
+│   │   └── syncService.js       # Background sync queue
 │   │
-│   ├── App.jsx              # Routes definition
-│   ├── main.jsx             # Entry point
-│   └── index.css            # Tailwind + custom styles
+│   ├── App.jsx                  # Routes definition
+│   ├── main.jsx                 # Entry point
+│   └── index.css                # Tailwind + custom styles
 │
 ├── public/
+│   ├── icons/                   # PWA icons (192x192, 512x512)
+│   └── manifest.json            # PWA manifest (auto-generated)
+│
 ├── package.json
-├── vite.config.js
+├── vite.config.js               # VitePWA plugin configured
 ├── tailwind.config.js
 ├── nginx.conf
 └── Dockerfile
@@ -327,7 +350,40 @@ const customMiddleware = (options = {}) => {
 module.exports = customMiddleware;
 ```
 
-### 3.3 Query Database Patterns
+### 3.3 Middleware di Sicurezza Disponibili
+
+Il sistema include diversi middleware di sicurezza pronti all'uso:
+
+```javascript
+// Autenticazione e autorizzazione
+const { authenticate, authorize, optionalAuth } = require('./middleware/auth');
+
+// Protezione CSRF
+const { verifyCsrf, generateCsrfToken, setCsrfCookie } = require('./middleware/csrf');
+
+// Audit logging
+const { auditMiddleware } = require('./middleware/audit');
+
+// Scansione antivirus per upload
+const { antivirusScan } = require('./middleware/antivirus');
+
+// Upload file (multer)
+const { attachmentUpload, pdfUpload } = require('./middleware/upload');
+```
+
+**Esempio: Route con tutti i middleware:**
+```javascript
+router.post('/upload',
+  authenticate,                    // Verifica JWT
+  authorize('admin', 'tecnico'),   // Controlla ruolo
+  attachmentUpload.single('file'), // Gestisce upload
+  antivirusScan,                   // Scansiona per virus
+  auditMiddleware,                 // Log operazione
+  controller.uploadFile
+);
+```
+
+### 3.4 Query Database Patterns
 
 **Query semplice:**
 ```javascript
@@ -685,7 +741,162 @@ const { data, loading, error, refetch } = useApi(
 
 ---
 
-## 5. Database Migrations
+## 5. PWA e Offline Development
+
+### 5.1 Service Worker con VitePWA
+
+Il sistema usa VitePWA per generare automaticamente il Service Worker:
+
+```javascript
+// vite.config.js
+import { VitePWA } from 'vite-plugin-pwa';
+
+export default defineConfig({
+  plugins: [
+    VitePWA({
+      registerType: 'autoUpdate',
+      manifest: {
+        name: 'CNC Maintenance System',
+        short_name: 'CNC Maint',
+        theme_color: '#3B82F6',
+        background_color: '#ffffff',
+        display: 'standalone',
+        icons: [
+          { src: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' }
+        ]
+      },
+      workbox: {
+        runtimeCaching: [
+          {
+            urlPattern: /^\/api\/machines/,
+            handler: 'NetworkFirst',
+            options: { cacheName: 'machines-cache' }
+          }
+        ]
+      }
+    })
+  ]
+});
+```
+
+### 5.2 IndexedDB con Dexie.js
+
+Il database offline è gestito con Dexie.js:
+
+```javascript
+// src/services/offlineDb.js
+import Dexie from 'dexie';
+
+const db = new Dexie('CNCMaintenanceDB');
+
+db.version(1).stores({
+  machines: 'id, numero_commessa, customer_id, synced',
+  issues: 'id, machine_id, status, synced',
+  syncQueue: '++id, action, entity, data, timestamp'
+});
+
+export default db;
+```
+
+### 5.3 Coda di Sincronizzazione
+
+Le operazioni offline vengono accumulate e sincronizzate:
+
+```javascript
+// src/services/syncService.js
+import db from './offlineDb';
+import api from './api';
+
+export async function addToSyncQueue(action, entity, data) {
+  await db.syncQueue.add({
+    action,
+    entity,
+    data,
+    timestamp: Date.now(),
+    retries: 0
+  });
+}
+
+export async function processSyncQueue() {
+  const pending = await db.syncQueue.toArray();
+
+  for (const item of pending) {
+    try {
+      await syncItem(item);
+      await db.syncQueue.delete(item.id);
+    } catch (error) {
+      await db.syncQueue.update(item.id, { retries: item.retries + 1 });
+    }
+  }
+}
+```
+
+### 5.4 Hook per Stato Online
+
+```javascript
+// src/hooks/useOnlineStatus.js
+import { useState, useEffect } from 'react';
+
+export function useOnlineStatus() {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  return isOnline;
+}
+```
+
+### 5.5 Logging con Winston
+
+Il backend usa Winston per logging strutturato:
+
+```javascript
+// src/config/logger.js
+const winston = require('winston');
+require('winston-daily-rotate-file');
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.DailyRotateFile({
+      filename: 'logs/combined-%DATE%.log',
+      maxSize: '20m',
+      maxFiles: '14d'
+    }),
+    new winston.transports.DailyRotateFile({
+      filename: 'logs/error-%DATE%.log',
+      level: 'error'
+    }),
+    new winston.transports.DailyRotateFile({
+      filename: 'logs/security-%DATE%.log',
+      level: 'warn'
+    })
+  ]
+});
+
+// Uso: logger.info('User logged in', { userId, ip });
+// Uso: logger.security('Failed login attempt', { username, ip });
+```
+
+---
+
+## 6. Database Migrations
 
 ### 5.1 Aggiungere una Nuova Tabella
 
@@ -765,7 +976,7 @@ const seedNewData = async (client) => {
 
 ---
 
-## 6. Testing
+## 7. Testing
 
 ### 6.1 Setup Test Environment
 
@@ -874,7 +1085,7 @@ describe('Dashboard', () => {
 
 ---
 
-## 7. Estensioni Comuni
+## 8. Estensioni Comuni
 
 ### 7.1 Aggiungere un Nuovo Tipo di Macchina
 
@@ -963,7 +1174,7 @@ const exportMachinesToCsv = async (req, res) => {
 
 ---
 
-## 8. Best Practices
+## 9. Best Practices
 
 ### 8.1 Codice Backend
 
@@ -1062,7 +1273,7 @@ SELECT * FROM audit_log;
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 ### 9.1 Database Connection Issues
 

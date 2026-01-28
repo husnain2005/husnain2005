@@ -9,13 +9,14 @@ Documentazione completa delle API REST del sistema CNC Maintenance.
 ## Indice
 
 1. [Autenticazione](#autenticazione)
-2. [Macchine](#macchine)
-3. [Problematiche](#problematiche)
-4. [Clienti](#clienti)
-5. [Allegati](#allegati)
-6. [Import PDF](#import-pdf)
-7. [Audit Log](#audit-log)
-8. [Codici Errore](#codici-errore)
+2. [Multi-Factor Authentication (MFA)](#multi-factor-authentication-mfa)
+3. [Macchine](#macchine)
+4. [Problematiche](#problematiche)
+5. [Clienti](#clienti)
+6. [Allegati](#allegati)
+7. [Import PDF](#import-pdf)
+8. [Audit Log](#audit-log)
+9. [Codici Errore](#codici-errore)
 
 ---
 
@@ -25,8 +26,24 @@ Documentazione completa delle API REST del sistema CNC Maintenance.
 
 ```
 Content-Type: application/json
-Authorization: Bearer <token>  (per endpoint protetti)
+Authorization: Bearer <token>  (per endpoint protetti, se non si usano i cookie)
+X-CSRF-Token: <csrf_token>    (obbligatorio per POST/PUT/DELETE con autenticazione cookie)
 ```
+
+### Autenticazione
+
+Il sistema supporta due modalità di autenticazione:
+
+1. **Cookie HTTPOnly (raccomandato):** Il token JWT viene salvato automaticamente in un cookie sicuro dopo il login. Il browser invia il cookie automaticamente.
+
+2. **Header Authorization:** Per client API, invia `Authorization: Bearer <token>` nell'header.
+
+### Protezione CSRF
+
+Per le richieste POST, PUT, DELETE autenticate via cookie, è necessario includere l'header `X-CSRF-Token`. Il token si ottiene:
+- Dal cookie `csrf_token` (leggibile da JavaScript)
+- Dalla risposta del login
+- Dall'endpoint `GET /api/csrf-token`
 
 ### Formato Response
 
@@ -84,11 +101,12 @@ POST /api/auth/login
 
 > Il campo `username` accetta: username, email, o user_id
 
-**Response 200:**
+**Response 200 (Login completato):**
 ```json
 {
     "message": "Login effettuato con successo",
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "csrfToken": "abc123...",
     "user": {
         "id": 1,
         "user_id": "USR001",
@@ -100,11 +118,50 @@ POST /api/auth/login
 }
 ```
 
+> **Nota:** Il token JWT viene anche impostato nel cookie `jwt_token` (HTTPOnly).
+> Il token CSRF viene impostato nel cookie `csrf_token` (leggibile da JS).
+
+**Response 200 (MFA richiesto):**
+```json
+{
+    "mfa_required": true,
+    "userId": 1,
+    "message": "Inserisci il codice MFA"
+}
+```
+
+> Se l'utente ha MFA attivo, la risposta include `mfa_required: true`. Il client deve poi chiamare `/api/auth/mfa/validate` con il codice TOTP.
+
 **Response 401:**
 ```json
 {
     "error": "Credenziali non valide",
     "message": "Username o password errati"
+}
+```
+
+**Response 429 (Rate Limited):**
+```json
+{
+    "error": "Troppi tentativi",
+    "message": "Troppi tentativi di login. Riprova tra 15 minuti."
+}
+```
+
+---
+
+### Logout
+
+Disconnette l'utente e cancella i cookie di sessione.
+
+```http
+POST /api/auth/logout
+```
+
+**Response 200:**
+```json
+{
+    "message": "Logout effettuato con successo"
 }
 ```
 
@@ -260,6 +317,136 @@ Authorization: Bearer <token>
 {
     "message": "Utente aggiornato con successo",
     "user": { ... }
+}
+```
+
+---
+
+## Multi-Factor Authentication (MFA)
+
+### Setup MFA
+
+Genera un segreto MFA per l'utente autenticato.
+
+```http
+POST /api/auth/mfa/setup
+Authorization: Bearer <token>
+X-CSRF-Token: <csrf_token>
+```
+
+**Response 200:**
+```json
+{
+    "secret": "JBSWY3DPEHPK3PXP",
+    "qrCode": "data:image/png;base64,...",
+    "backupCodes": ["A1B2C3D4", "E5F6G7H8", ...],
+    "message": "Scansiona il QR code con Google Authenticator, poi verifica con un codice"
+}
+```
+
+---
+
+### Verifica e Attiva MFA
+
+Verifica il codice TOTP e attiva MFA per l'utente.
+
+```http
+POST /api/auth/mfa/verify
+Authorization: Bearer <token>
+X-CSRF-Token: <csrf_token>
+```
+
+**Body:**
+```json
+{
+    "token": "123456"
+}
+```
+
+**Response 200:**
+```json
+{
+    "message": "Autenticazione a due fattori attivata con successo!"
+}
+```
+
+---
+
+### Valida MFA (Login Step 2)
+
+Completa il login quando MFA è richiesto.
+
+```http
+POST /api/auth/mfa/validate
+```
+
+**Body:**
+```json
+{
+    "userId": 1,
+    "token": "123456"
+}
+```
+
+Oppure con codice di backup:
+```json
+{
+    "userId": 1,
+    "backupCode": "A1B2C3D4"
+}
+```
+
+**Response 200:**
+```json
+{
+    "message": "Login completato con successo",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "csrfToken": "abc123...",
+    "user": { ... }
+}
+```
+
+---
+
+### Disabilita MFA
+
+Disabilita MFA per l'utente (richiede conferma password).
+
+```http
+POST /api/auth/mfa/disable
+Authorization: Bearer <token>
+X-CSRF-Token: <csrf_token>
+```
+
+**Body:**
+```json
+{
+    "password": "password123"
+}
+```
+
+**Response 200:**
+```json
+{
+    "message": "Autenticazione a due fattori disabilitata"
+}
+```
+
+---
+
+### Stato MFA
+
+Verifica se MFA è attivo per l'utente.
+
+```http
+GET /api/auth/mfa/status
+Authorization: Bearer <token>
+```
+
+**Response 200:**
+```json
+{
+    "mfa_enabled": true
 }
 ```
 

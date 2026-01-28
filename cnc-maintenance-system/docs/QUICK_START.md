@@ -37,7 +37,29 @@ Scarica e installa [Docker Desktop](https://www.docker.com/products/docker-deskt
 cd cnc-maintenance-system
 ```
 
-### Step 2: Avvia i Container Docker
+### Step 2: Configura le Variabili d'Ambiente (IMPORTANTE!)
+
+```bash
+# Copia il file di esempio
+cp .env.example .env
+
+# Modifica il file .env con le tue password sicure
+nano .env  # oppure usa il tuo editor preferito
+```
+
+**Variabili OBBLIGATORIE da impostare in `.env`:**
+```env
+# Password del database (CAMBIALA!)
+POSTGRES_PASSWORD=la_tua_password_sicura_qui
+
+# Chiave segreta JWT (CAMBIALA! Usa una stringa lunga e casuale)
+# Genera con: openssl rand -base64 64
+JWT_SECRET=la_tua_chiave_segreta_molto_lunga_e_casuale
+```
+
+⚠️ **ATTENZIONE:** Il sistema NON si avvia senza queste variabili configurate!
+
+### Step 3: Avvia i Container Docker
 
 ```bash
 # Avvia tutti i servizi in background
@@ -277,6 +299,33 @@ lsof -i :5432
 
 # Termina il processo o cambia le porte nel docker-compose.yml
 ```
+
+---
+
+## Funzionalità Avanzate
+
+### Installare come App (PWA)
+
+L'applicazione può essere installata su smartphone, tablet e PC:
+
+1. Apri http://localhost:3000 nel browser
+2. Clicca sul banner "Installa CNC Maintenance" (o l'icona di installazione nel browser)
+3. L'app apparirà come un'applicazione nativa
+
+### Modalità Offline
+
+Il sistema funziona anche senza connessione:
+- I dati vengono salvati localmente
+- Le modifiche vengono sincronizzate quando torni online
+- Un banner giallo indica quando sei offline
+
+### Autenticazione a Due Fattori (MFA)
+
+Per maggiore sicurezza, puoi attivare MFA:
+1. Vai in **Profilo** > **Sicurezza**
+2. Clicca **Attiva MFA**
+3. Scansiona il QR code con Google Authenticator
+4. Inserisci il codice di verifica
 
 ---
 

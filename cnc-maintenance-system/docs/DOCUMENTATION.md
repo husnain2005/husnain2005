@@ -19,9 +19,10 @@ Sistema gestionale web per la gestione di problematiche e manutenzioni di macchi
 5. [Backend API](#5-backend-api)
 6. [Frontend](#6-frontend)
 7. [Sicurezza](#7-sicurezza)
-8. [Deployment](#8-deployment)
-9. [Configurazione](#9-configurazione)
-10. [Manutenzione](#10-manutenzione)
+8. [PWA e Modalità Offline](#8-pwa-e-modalità-offline)
+9. [Deployment](#9-deployment)
+10. [Configurazione](#10-configurazione)
+11. [Manutenzione](#11-manutenzione)
 
 ---
 
@@ -681,9 +682,40 @@ Axios configurato con:
 
 - **Password hashing:** bcrypt con 12 rounds
 - **Token:** JWT con scadenza configurabile (default 24h)
-- **Storage:** Token in localStorage (lato client)
+- **Storage:** Cookie HTTPOnly (sicuro contro XSS)
+- **Rate Limiting:** 5 tentativi login in 15 minuti
 
-### 7.2 Autorizzazione
+### 7.2 Cookie HTTPOnly + CSRF
+
+Il sistema utilizza un approccio di sicurezza a doppio livello:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    AUTENTICAZIONE SICURA                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────────┐     ┌──────────────┐     ┌─────────────┐  │
+│  │   jwt_token  │     │  csrf_token  │     │ X-CSRF-Token│  │
+│  │   (Cookie)   │     │  (Cookie)    │     │  (Header)   │  │
+│  │   HTTPOnly   │     │  JS-readable │     │             │  │
+│  └──────────────┘     └──────────────┘     └─────────────┘  │
+│         ↓                    ↓                    ↓          │
+│   NON accessibile      Leggibile da       Inviato nelle     │
+│   da JavaScript        JavaScript         richieste POST    │
+│   (anti-XSS)          (per CSRF)          PUT, DELETE       │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 7.3 Multi-Factor Authentication (MFA)
+
+Supporto opzionale per autenticazione a due fattori:
+
+- **TOTP:** Compatibile con Google Authenticator, Authy, etc.
+- **Backup Codes:** 8 codici di emergenza generati al setup
+- **QR Code:** Scansione facile per configurazione app
+
+### 7.4 Autorizzazione (RBAC)
 
 | Endpoint | Lettura | Tecnico | Admin |
 |----------|---------|---------|-------|
@@ -695,15 +727,36 @@ Axios configurato con:
 | POST /issues/:id/attachments | ✗ | ✓ | ✓ |
 | GET /audit | ✗ | ✗ | ✓ |
 | POST /auth/users | ✗ | ✗ | ✓ |
+| MFA setup/disable | ✓ | ✓ | ✓ |
 
-### 7.3 Protezione Upload
+### 7.5 Protezione Upload
 
 - Whitelist MIME types
 - Limite dimensione file (10MB default, 50MB PDF)
 - Nomi file randomizzati (UUID)
 - Storage separato dal codice
+- **Scansione antivirus** con ClamAV (opzionale, in produzione)
 
-### 7.4 Audit Trail
+### 7.6 Security Headers (Helmet + Nginx)
+
+```
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 1; mode=block
+Strict-Transport-Security: max-age=31536000
+Content-Security-Policy: default-src 'self'...
+Referrer-Policy: strict-origin-when-cross-origin
+```
+
+### 7.7 Docker Hardening
+
+- Container eseguiti come utente non-root
+- File system read-only dove possibile
+- Limiti risorse (CPU/memoria)
+- `no-new-privileges` security option
+- Network interno isolato
+
+### 7.8 Audit Trail
 
 Ogni modifica registra:
 - Chi (user_id)
@@ -712,11 +765,94 @@ Ogni modifica registra:
 - Valori prima/dopo (JSONB)
 - IP e User Agent
 
+### 7.9 Logging Centralizzato
+
+Winston logger con:
+- Rotazione giornaliera dei log
+- Log separati per errori e sicurezza
+- Retention configurabile (30-365 giorni)
+
 ---
 
-## 8. Deployment
+## 8. PWA e Modalità Offline
 
-### 8.1 Docker Compose
+### 8.1 Progressive Web App
+
+Il sistema è una PWA completa che può essere installata su qualsiasi dispositivo:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     PWA FEATURES                             │
+├─────────────────────────────────────────────────────────────┤
+│  ✓ Installabile su desktop, tablet, smartphone             │
+│  ✓ Icona sulla home screen                                  │
+│  ✓ Schermo intero (standalone mode)                        │
+│  ✓ Funzionamento offline                                    │
+│  ✓ Aggiornamenti automatici                                 │
+│  ✓ Notifiche push (futuro)                                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 8.2 Service Worker
+
+Workbox gestisce la cache con strategie ottimizzate:
+
+| Risorsa | Strategia | Cache TTL |
+|---------|-----------|-----------|
+| Assets statici (JS, CSS, immagini) | CacheFirst | 1 anno |
+| API Machines/Issues/Customers | NetworkFirst | 1 ora |
+| API Auth | NetworkFirst | 30 min |
+| Uploads (immagini, PDF) | CacheFirst | 7 giorni |
+
+### 8.3 IndexedDB (Dexie.js)
+
+Database locale per storage offline:
+
+```javascript
+// Tabelle IndexedDB
+machines:    id, numero_commessa, machine_type, customer_id
+issues:      id, machine_id, numero_commessa, status, priority
+customers:   id, code, name, city
+pendingActions: ++id, type, endpoint, method, data, created_at
+syncMeta:    key (last sync timestamps)
+```
+
+### 8.4 Sincronizzazione
+
+Flusso di sincronizzazione offline/online:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     SYNC WORKFLOW                            │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ONLINE:    API ────────────────────────────→ Server        │
+│               ↓                                              │
+│             Cache in IndexedDB (backup)                     │
+│                                                              │
+│  OFFLINE:   API ────────────────────────────→ IndexedDB     │
+│               ↓                                              │
+│             Queue azioni (pendingActions)                   │
+│                                                              │
+│  RECONNECT: pendingActions ─────────────────→ Server        │
+│               ↓                                              │
+│             Rimuovi dalla queue se successo                 │
+│             Retry (max 10x) se fallisce                     │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 8.5 Componenti UI Offline
+
+- **OfflineBanner:** Mostra stato connessione e sincronizzazione
+- **InstallPrompt:** Suggerisce installazione PWA
+- **UpdatePrompt:** Notifica aggiornamenti disponibili
+
+---
+
+## 9. Deployment
+
+### 9.1 Docker Compose
 
 ```yaml
 services:
@@ -769,9 +905,9 @@ Per ambienti ad alto traffico:
 
 ---
 
-## 9. Configurazione
+## 10. Configurazione
 
-### 9.1 Variabili d'Ambiente
+### 10.1 Variabili d'Ambiente
 
 | Variabile | Descrizione | Default | Obbligatoria |
 |-----------|-------------|---------|--------------|
@@ -788,7 +924,7 @@ Per ambienti ad alto traffico:
 | `MAX_FILE_SIZE` | Max file (bytes) | 10485760 | No |
 | `CORS_ORIGIN` | Origin CORS | http://localhost:3000 | No |
 
-### 9.2 File .env Esempio
+### 10.2 File .env Esempio
 
 ```env
 # Database
@@ -816,9 +952,9 @@ CORS_ORIGIN=https://cnc.yourdomain.com
 
 ---
 
-## 10. Manutenzione
+## 11. Manutenzione
 
-### 10.1 Backup
+### 11.1 Backup
 
 **Database:**
 ```bash
@@ -838,7 +974,7 @@ gunzip -c backup_20260117.sql.gz | docker-compose exec -T db psql -U postgres -d
 tar -czvf uploads_backup_$(date +%Y%m%d).tar.gz ./uploads/
 ```
 
-### 10.2 Monitoraggio
+### 11.2 Monitoraggio
 
 **Health Check:**
 ```bash
@@ -857,7 +993,7 @@ docker-compose logs backend | grep -i error
 docker-compose logs --tail=100 backend
 ```
 
-### 10.3 Aggiornamenti
+### 11.3 Aggiornamenti
 
 ```bash
 # Pull nuove immagini
@@ -870,7 +1006,7 @@ docker-compose up -d --build
 docker-compose up -d --build backend
 ```
 
-### 10.4 Pulizia
+### 11.4 Pulizia
 
 ```bash
 # Rimuovi container fermati

@@ -14,8 +14,11 @@ Manuale completo per l'utilizzo del sistema CNC Maintenance Management.
 6. [Gestione Clienti](#6-gestione-clienti)
 7. [Mappa Geografica](#7-mappa-geografica)
 8. [Import da PDF](#8-import-da-pdf)
-9. [Gestione Utenti](#9-gestione-utenti)
-10. [FAQ](#10-faq)
+9. [Installazione App (PWA)](#9-installazione-app-pwa)
+10. [Modalità Offline](#10-modalità-offline)
+11. [Sicurezza Account (MFA)](#11-sicurezza-account-mfa)
+12. [Gestione Utenti](#12-gestione-utenti)
+13. [FAQ](#13-faq)
 
 ---
 
@@ -665,11 +668,249 @@ La funzione Import PDF permette di:
 
 ---
 
-## 9. Gestione Utenti
+## 9. Installazione App (PWA)
+
+CNC Maintenance può essere installato come applicazione nativa su qualsiasi dispositivo.
+
+### 9.1 Cos'è una PWA?
+
+Una Progressive Web App (PWA) è un'applicazione web che si comporta come un'app nativa:
+- Si installa sul dispositivo
+- Ha un'icona nella home screen / desktop
+- Funziona anche offline
+- Riceve aggiornamenti automatici
+
+### 9.2 Installazione su Desktop (Chrome/Edge)
+
+1. Apri CNC Maintenance nel browser
+2. Cerca l'icona di installazione nella barra degli indirizzi (⊕ o ⬇️)
+3. Clicca su **"Installa CNC Maintenance"**
+4. L'app apparirà come applicazione installata
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ 🔧 CNC Maintenance                    ⊕ Installa │
+│ http://localhost:3000                              │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+              Clicca sull'icona ⊕
+                          ↓
+┌─────────────────────────────────────┐
+│  Installare CNC Maintenance?        │
+│                                     │
+│  [Installa]         [Annulla]       │
+└─────────────────────────────────────┘
+```
+
+### 9.3 Installazione su Smartphone/Tablet
+
+**Android (Chrome):**
+1. Apri il sito in Chrome
+2. Tocca i tre puntini (⋮) in alto a destra
+3. Seleziona **"Aggiungi a schermata Home"**
+4. Conferma toccando **"Aggiungi"**
+
+**iPhone/iPad (Safari):**
+1. Apri il sito in Safari
+2. Tocca l'icona **Condividi** (quadrato con freccia)
+3. Scorri e seleziona **"Aggiungi a Home"**
+4. Conferma toccando **"Aggiungi"**
+
+### 9.4 Banner di Installazione
+
+Se disponibile, vedrai un banner automatico:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ 📱 Installa CNC Maintenance per un accesso più rapido!  │
+│                                                         │
+│ [Installa Ora]                               [Chiudi X] │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 9.5 Aggiornamenti Automatici
+
+L'app si aggiorna automaticamente. Quando è disponibile un aggiornamento:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ 🔄 Nuova versione disponibile!                          │
+│ Aggiorna per ottenere le ultime funzionalità.           │
+│                                                         │
+│ [Aggiorna Ora]                           [Più Tardi]    │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 10. Modalità Offline
+
+Il sistema funziona anche senza connessione Internet.
+
+### 10.1 Come Funziona
+
+- **Lettura dati:** I dati visualizzati di recente sono disponibili offline
+- **Creazione/Modifica:** Le operazioni vengono salvate localmente
+- **Sincronizzazione:** Quando torni online, i dati si sincronizzano automaticamente
+
+### 10.2 Indicatore Offline
+
+Quando sei senza connessione, vedrai un banner giallo:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ ⚠️ Sei offline - Le modifiche verranno sincronizzate   │
+│    quando tornerai online                               │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 10.3 Coda di Sincronizzazione
+
+Le modifiche offline vengono accumulate in una coda:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ 📤 3 modifiche in attesa di sincronizzazione            │
+│ ────────────────────────────────────────────────────────│
+│ • Nuova problematica - COM-2024-015                     │
+│ • Commento aggiunto - Issue #234                        │
+│ • Stato aggiornato - Issue #233                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 10.4 Sincronizzazione Automatica
+
+Quando torni online:
+1. Il banner giallo scompare
+2. Compare brevemente un messaggio "Sincronizzazione in corso..."
+3. I dati vengono inviati al server
+4. Ricevi conferma "Sincronizzazione completata!"
+
+### 10.5 Limitazioni Offline
+
+| Funzione | Disponibile Offline |
+|----------|---------------------|
+| Visualizza macchine | Sì (cache) |
+| Visualizza problematiche | Sì (cache) |
+| Crea problematica | Sì (coda) |
+| Aggiungi commento | Sì (coda) |
+| Carica allegati | No |
+| Import PDF | No |
+| Mappa | Parziale (cache tiles) |
+
+---
+
+## 11. Sicurezza Account (MFA)
+
+L'autenticazione a due fattori (MFA) aggiunge un livello extra di sicurezza.
+
+### 11.1 Cos'è l'MFA?
+
+MFA (Multi-Factor Authentication) richiede due elementi per accedere:
+1. **Qualcosa che conosci:** La tua password
+2. **Qualcosa che possiedi:** Un codice dal tuo telefono
+
+### 11.2 Attivare l'MFA
+
+**Prerequisiti:**
+- Un'app di autenticazione sul telefono:
+  - Google Authenticator (consigliato)
+  - Microsoft Authenticator
+  - Authy
+
+**Procedura:**
+
+1. Vai su **Profilo** > **Sicurezza**
+2. Clicca su **"Attiva MFA"**
+3. Appare un QR Code:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Configura Autenticazione a Due Fattori                 │
+│ ────────────────────────────────────────────────────────│
+│                                                         │
+│  1. Scarica Google Authenticator                        │
+│                                                         │
+│  2. Scansiona questo QR Code:                           │
+│     ┌─────────────────┐                                 │
+│     │ ▓▓░░▓▓▓░░▓▓░░▓ │                                 │
+│     │ ▓░░▓▓░░▓░░▓▓░▓ │                                 │
+│     │ ░▓░▓▓░▓▓░▓░░▓░ │                                 │
+│     │ ▓▓░░▓░░▓▓░▓▓░▓ │                                 │
+│     │ ░▓▓░░▓▓░░▓░░▓▓ │                                 │
+│     └─────────────────┘                                 │
+│                                                         │
+│  3. Inserisci il codice a 6 cifre:                      │
+│     ┌────────────────────────────┐                      │
+│     │ [______]                   │                      │
+│     └────────────────────────────┘                      │
+│                                                         │
+│  [Verifica e Attiva]                                    │
+└─────────────────────────────────────────────────────────┘
+```
+
+4. Scansiona il QR con l'app Authenticator
+5. Inserisci il codice a 6 cifre mostrato nell'app
+6. Clicca **"Verifica e Attiva"**
+
+> ⚠️ **IMPORTANTE:** Salva i codici di backup in un posto sicuro!
+
+### 11.3 Login con MFA
+
+Dopo aver attivato MFA, il login diventa:
+
+1. Inserisci username e password
+2. Clicca **Accedi**
+3. Ti viene richiesto il codice:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                                                         │
+│           🔐 Verifica in due passaggi                   │
+│                                                         │
+│  Inserisci il codice a 6 cifre dalla tua app           │
+│  di autenticazione                                      │
+│                                                         │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │ [_ _ _ _ _ _]                                   │   │
+│  └─────────────────────────────────────────────────┘   │
+│                                                         │
+│  [Verifica]                                             │
+│                                                         │
+│  💡 Il codice si rinnova ogni 30 secondi               │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+4. Apri l'app Authenticator sul telefono
+5. Inserisci il codice a 6 cifre corrente
+6. Clicca **Verifica**
+
+### 11.4 Disattivare l'MFA
+
+Se necessario, puoi disattivare l'MFA:
+
+1. Vai su **Profilo** > **Sicurezza**
+2. Clicca su **"Disattiva MFA"**
+3. Inserisci il codice di conferma dall'app
+4. Conferma la disattivazione
+
+> ⚠️ **Nota:** Disattivare MFA riduce la sicurezza del tuo account. Ti consigliamo di tenerlo attivo.
+
+### 11.5 Recupero Accesso
+
+Se hai perso l'accesso al telefono con l'app Authenticator:
+
+1. Usa uno dei **codici di backup** che hai salvato
+2. Oppure contatta l'amministratore per reset
+
+---
+
+## 12. Gestione Utenti
 
 > ⚠️ Questa sezione è accessibile solo agli **Admin**.
 
-### 9.1 Lista Utenti
+### 12.1 Lista Utenti
 
 Vai a **Utenti** dal menu.
 
@@ -691,7 +932,7 @@ Vai a **Utenti** dal menu.
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 9.2 Creare un Utente
+### 12.2 Creare un Utente
 
 1. Clicca su **+ Nuovo Utente**
 2. Compila il form:
@@ -703,7 +944,7 @@ Vai a **Utenti** dal menu.
    - **Ruolo:** admin, tecnico, o lettura
 3. Clicca su **Crea**
 
-### 9.3 Modificare un Utente
+### 12.3 Modificare un Utente
 
 1. Clicca sull'icona **✏️** nella riga dell'utente
 2. Modifica:
@@ -711,14 +952,14 @@ Vai a **Utenti** dal menu.
    - Ruolo
 3. Clicca su **Salva**
 
-### 9.4 Abilitare/Disabilitare Utenti
+### 12.4 Abilitare/Disabilitare Utenti
 
 - Clicca sull'icona **✓** o **✗** per cambiare lo stato
 - Un utente disabilitato non può accedere al sistema
 
 ---
 
-## 10. FAQ
+## 13. FAQ
 
 ### Domande Frequenti
 
@@ -751,6 +992,24 @@ A: Contatta l'amministratore di sistema. Richiede modifiche al database.
 
 **Q: Posso esportare i dati?**
 A: Al momento l'export non è disponibile nell'interfaccia. Contatta l'amministratore per richieste specifiche.
+
+**Q: Come installo l'app sul mio telefono?**
+A: Apri il sito nel browser, cerca l'opzione "Aggiungi a schermata Home" nel menu del browser. Vedi sezione 9.
+
+**Q: Posso usare l'app senza Internet?**
+A: Sì, l'app funziona offline. I dati vengono salvati localmente e sincronizzati quando torni online. Alcune funzioni (upload file, import PDF) richiedono connessione.
+
+**Q: Cos'è l'MFA e devo attivarlo?**
+A: MFA (Multi-Factor Authentication) aggiunge sicurezza richiedendo un codice dal telefono oltre alla password. È consigliato per tutti gli utenti con accesso a dati sensibili.
+
+**Q: Ho perso il telefono, come accedo con MFA attivo?**
+A: Usa uno dei codici di backup che hai salvato durante l'attivazione, oppure contatta l'amministratore per disattivare temporaneamente MFA.
+
+**Q: L'app chiede di aggiornarsi, cosa devo fare?**
+A: Clicca "Aggiorna Ora" per ottenere l'ultima versione. L'app si ricaricherà automaticamente con le nuove funzionalità.
+
+**Q: Come faccio a sapere se sono offline?**
+A: Un banner giallo apparirà in alto nella pagina indicando "Sei offline". Le modifiche fatte verranno sincronizzate automaticamente quando torni online.
 
 ---
 

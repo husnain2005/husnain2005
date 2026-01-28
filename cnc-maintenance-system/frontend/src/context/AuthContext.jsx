@@ -20,31 +20,33 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
+  /**
+   * Check if the user is already authenticated by calling /api/auth/me.
+   * The JWT cookie is sent automatically by the browser (withCredentials: true).
+   * No localStorage access needed.
+   */
   const checkAuth = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
     try {
       const response = await api.get('/auth/me');
       setUser(response.data.user);
     } catch (err) {
-      console.error('Auth check failed:', err);
-      localStorage.removeItem('token');
+      // Not authenticated or cookie expired - this is expected for new visitors
+      setUser(null);
     } finally {
       setLoading(false);
     }
   };
 
+  /**
+   * Log in the user. The backend sets an HttpOnly JWT cookie and a CSRF cookie
+   * automatically in the response. We only need to store the user data in state.
+   */
   const login = async (username, password) => {
     try {
       setError(null);
       const response = await api.post('/auth/login', { username, password });
-      const { token, user: userData } = response.data;
+      const { user: userData } = response.data;
 
-      localStorage.setItem('token', token);
       setUser(userData);
       return true;
     } catch (err) {
@@ -54,9 +56,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
+  /**
+   * Log out the user by calling the backend logout endpoint.
+   * The backend clears the HttpOnly JWT cookie and the CSRF cookie.
+   */
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (err) {
+      // Even if the API call fails, clear local state
+      console.error('Logout API call failed:', err);
+    } finally {
+      setUser(null);
+    }
   };
 
   const value = {

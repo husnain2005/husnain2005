@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { machinesApi, customersApi } from '../services/api';
-import { Search, Filter, AlertTriangle, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Filter, AlertTriangle, MapPin, ChevronLeft, ChevronRight, Plus, AlertCircle } from 'lucide-react';
 
 function Machines() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -95,13 +95,27 @@ function Machines() {
     setPage(1);
   };
 
+  // Check if machine data is incomplete
+  const isMachineIncomplete = (machine) => {
+    return !machine.model_name || !machine.customer_name || !machine.control_type;
+  };
+
   const totalPages = Math.ceil(total / limit);
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Macchine</h1>
-        <p className="text-gray-500">Gestione e ricerca macchine CNC</p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Macchine</h1>
+          <p className="text-gray-500">Gestione e ricerca macchine CNC</p>
+        </div>
+        <Link
+          to="/machines/new"
+          className="inline-flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
+        >
+          <Plus size={18} />
+          Nuova Macchina
+        </Link>
       </div>
 
       {/* Search Bar */}
@@ -230,12 +244,19 @@ function Machines() {
                   {machines.map(machine => (
                     <tr key={machine.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
-                        <Link
-                          to={`/machines/${machine.id}`}
-                          className="font-mono text-primary-600 hover:underline font-medium"
-                        >
-                          {machine.numero_commessa}
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            to={`/machines/${machine.id}`}
+                            className="font-mono text-primary-600 hover:underline font-medium"
+                          >
+                            {machine.numero_commessa}
+                          </Link>
+                          {isMachineIncomplete(machine) && (
+                            <span className="text-orange-500" title="Dati incompleti">
+                              <AlertCircle size={16} />
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm">

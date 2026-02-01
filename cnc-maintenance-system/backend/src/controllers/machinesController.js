@@ -494,6 +494,32 @@ const getModels = async (req, res) => {
   }
 };
 
+/**
+ * Get sizes for a specific model
+ * GET /api/machines/models/:modelId/sizes
+ */
+const getSizesByModel = async (req, res) => {
+  try {
+    const { modelId } = req.params;
+
+    const result = await db.query(`
+      SELECT id, model_id, size_value, description
+      FROM machine_sizes
+      WHERE model_id = $1 AND is_active = true
+      ORDER BY size_value
+    `, [modelId]);
+
+    res.json({ sizes: result.rows });
+
+  } catch (error) {
+    console.error('Get sizes error:', error);
+    res.status(500).json({
+      error: 'Errore interno',
+      message: 'Errore durante il recupero delle taglie'
+    });
+  }
+};
+
 module.exports = {
   getMachines,
   getMachine,
@@ -501,5 +527,6 @@ module.exports = {
   updateMachine,
   deleteMachine,
   getMachinesForMap,
-  getModels
+  getModels,
+  getSizesByModel
 };

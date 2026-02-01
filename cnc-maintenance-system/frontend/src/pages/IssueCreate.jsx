@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { issuesApi, machinesApi, usersApi } from '../services/api';
-import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
 
 function IssueCreate() {
   const navigate = useNavigate();
@@ -12,6 +12,7 @@ function IssueCreate() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const [notifications, setNotifications] = useState([]);
   const [formData, setFormData] = useState({
     numero_commessa: searchParams.get('numero_commessa') || '',
     machine_id: searchParams.get('machine_id') || '',
@@ -65,7 +66,18 @@ function IssueCreate() {
       if (!data.customer_fallback) delete data.customer_fallback;
 
       const response = await issuesApi.create(data);
-      navigate(`/issues/${response.data.issue.id}`);
+
+      // Show notifications if any (machine created, incomplete data, etc.)
+      if (response.data.notifications && response.data.notifications.length > 0) {
+        setNotifications(response.data.notifications);
+        setLoading(false);
+        // Wait 3 seconds to show notifications, then navigate
+        setTimeout(() => {
+          navigate(`/issues/${response.data.issue.id}`);
+        }, 3000);
+      } else {
+        navigate(`/issues/${response.data.issue.id}`);
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Errore durante la creazione');
       setLoading(false);
@@ -95,6 +107,29 @@ function IssueCreate() {
             </div>
           )}
 
+          {notifications.length > 0 && (
+            <div className="mb-6 space-y-2">
+              {notifications.map((notif, idx) => (
+                <div
+                  key={idx}
+                  className={`px-4 py-3 rounded-lg flex items-center gap-2 ${
+                    notif.type === 'success'
+                      ? 'bg-green-50 text-green-700 border border-green-200'
+                      : 'bg-orange-50 text-orange-700 border border-orange-200'
+                  }`}
+                >
+                  {notif.type === 'success' ? (
+                    <CheckCircle size={18} />
+                  ) : (
+                    <AlertCircle size={18} />
+                  )}
+                  {notif.message}
+                </div>
+              ))}
+              <p className="text-sm text-gray-500 text-center">Reindirizzamento in corso...</p>
+            </div>
+          )}
+
           {/* Machine Identification */}
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">Identificazione Macchina</h2>
@@ -107,7 +142,7 @@ function IssueCreate() {
                   type="text"
                   value={formData.numero_commessa}
                   onChange={(e) => handleChange('numero_commessa', e.target.value)}
-                  placeholder="es. COM-2024-001"
+                  placeholder="es. 24_0033 o 25_0052"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                 />
                 <p className="text-xs text-gray-500 mt-1">

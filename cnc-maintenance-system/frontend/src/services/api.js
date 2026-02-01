@@ -58,6 +58,7 @@ export const machinesApi = {
   delete: (id) => api.delete(`/machines/${id}`),
   getForMap: () => api.get('/machines/map'),
   getModels: () => api.get('/machines/models'),
+  getSizes: (modelId) => api.get(`/machines/models/${modelId}/sizes`),
 };
 
 export const issuesApi = {

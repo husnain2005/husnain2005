@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Machines from './pages/Machines';
+import MachineCreate from './pages/MachineCreate';
 import MachineDetail from './pages/MachineDetail';
 import Issues from './pages/Issues';
 import IssueDetail from './pages/IssueDetail';
@@ -62,6 +63,7 @@ function App() {
       }>
         <Route index element={<Dashboard />} />
         <Route path="machines" element={<Machines />} />
+        <Route path="machines/new" element={<MachineCreate />} />
         <Route path="machines/:id" element={<MachineDetail />} />
         <Route path="issues" element={<Issues />} />
         <Route path="issues/new" element={<IssueCreate />} />

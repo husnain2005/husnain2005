@@ -6,6 +6,7 @@ const { auditMiddleware } = require('../middleware/audit');
 
 // Get machine models and sizes (public for forms)
 router.get('/models', authenticate, machinesController.getModels);
+router.get('/models/:modelId/sizes', authenticate, machinesController.getSizesByModel);
 
 // Get machines for map view
 router.get('/map', authenticate, machinesController.getMachinesForMap);

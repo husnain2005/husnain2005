@@ -26,10 +26,10 @@ const getIssues = async (req, res) => {
         i.*,
         ig.name as issue_group_name,
         ig.code as issue_group_code,
-        m.numero_commessa,
-        mm.machine_type,
-        mm.model_name,
-        c.name as customer_name,
+        COALESCE(m.numero_commessa, i.numero_commessa) as numero_commessa,
+        COALESCE(mm.machine_type::text, i.machine_type_fallback::text) as machine_type,
+        COALESCE(mm.model_name, i.model_fallback) as model_name,
+        COALESCE(c.name, i.customer_fallback) as customer_name,
         u.full_name as created_by_name,
         ua.full_name as assigned_to_name,
         (SELECT COUNT(*) FROM attachments a WHERE a.issue_id = i.id) as attachments_count
@@ -250,6 +250,10 @@ const createIssue = async (req, res) => {
 
     // If numero_commessa provided, try to find the machine
     let resolvedMachineId = machine_id;
+    let machineCreated = false;
+    let machineIncomplete = false;
+    let missingFields = [];
+
     if (!resolvedMachineId && numero_commessa) {
       const machineResult = await db.query(
         'SELECT id FROM machines WHERE numero_commessa = $1',
@@ -257,6 +261,22 @@ const createIssue = async (req, res) => {
       );
       if (machineResult.rows.length > 0) {
         resolvedMachineId = machineResult.rows[0].id;
+      } else {
+        // Auto-create new machine with available data
+        const newMachineResult = await db.query(`
+          INSERT INTO machines (
+            numero_commessa, created_by, notes
+          ) VALUES ($1, $2, $3)
+          RETURNING id
+        `, [
+          numero_commessa,
+          req.user.id,
+          'Macchina creata automaticamente dalla problematica'
+        ]);
+        resolvedMachineId = newMachineResult.rows[0].id;
+        machineCreated = true;
+        machineIncomplete = true;
+        missingFields = ['model_id', 'size_id', 'customer_id', 'control_type'];
       }
     }
 
@@ -276,10 +296,28 @@ const createIssue = async (req, res) => {
     // Audit log
     await req.audit('issues', result.rows[0].id, 'INSERT', null, result.rows[0]);
 
-    res.status(201).json({
+    // Build response with machine creation notifications
+    const response = {
       message: 'Problematica creata con successo',
-      issue: result.rows[0]
-    });
+      issue: result.rows[0],
+      notifications: []
+    };
+
+    if (machineCreated) {
+      response.notifications.push({
+        type: 'success',
+        message: `Nuova macchina ${numero_commessa} registrata automaticamente`
+      });
+    }
+
+    if (machineIncomplete) {
+      response.notifications.push({
+        type: 'warning',
+        message: 'Dati macchina incompleti: mancano modello, taglia, cliente e controllo'
+      });
+    }
+
+    res.status(201).json(response);
 
   } catch (error) {
     console.error('Create issue error:', error);

@@ -32,8 +32,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    networks:
-      - internal
 
   # Backend API
   backend:
@@ -85,8 +83,6 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
-    networks:
-      - internal
 
   # Frontend
   frontend:
@@ -125,13 +121,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    networks:
-      - internal
 
 volumes:
   postgres_data:
   uploads_data:
-
-networks:
-  internal:
-    driver: bridge

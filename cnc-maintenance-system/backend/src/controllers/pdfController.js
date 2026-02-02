@@ -6,12 +6,13 @@ const { UPLOAD_DIR } = require('../middleware/upload');
 
 /**
  * Extract text from PDF and parse maintenance data
- * Uses pattern matching and optional AI for complex extraction
+ * Optimized for "Registro non conformità" form from Giuseppe Giana
  */
 const extractMaintenanceData = async (text) => {
   const extracted = {
     numero_commessa: null,
     date: null,
+    author: null,
     machine_type: null,
     model: null,
     customer: null,
@@ -19,155 +20,201 @@ const extractMaintenanceData = async (text) => {
     issue_type: null,
     title: null,
     description: null,
+    resolution_notes: null,
+    defect_types: [],
     confidence: {}
   };
 
-  // Pattern matching for comune fields
-  // Numero commessa patterns
+  // Clean text - normalize whitespace
+  const cleanText = text.replace(/\s+/g, ' ').trim();
+
+  // ========================================
+  // NUMERO COMMESSA - Pattern: "Commessa N°" followed by number
+  // Format examples: 25_0052, 24_0033
+  // ========================================
   const commessaPatterns = [
-    /(?:n[°.]?\s*commessa|commessa\s*n[°.]?|order\s*n[°.]?)\s*:?\s*([A-Z0-9-]+)/i,
-    /(?:COM[-\s]?\d{4}[-\s]?\d{3})/i,
-    /(?:numero\s+commessa)\s*:?\s*([A-Z0-9-]+)/i
+    /Commessa\s*N[°º]?\s*[:\s]*([0-9]{2}[_\-][0-9]{4})/i,
+    /Commessa\s*N[°º]?\s*[:\s]*([A-Z0-9][A-Z0-9_\-]+)/i,
+    /N[°º]?\s*Commessa\s*[:\s]*([0-9]{2}[_\-][0-9]{4})/i,
+    /([0-9]{2}[_][0-9]{4})/  // Standalone pattern like 25_0052
   ];
 
   for (const pattern of commessaPatterns) {
     const match = text.match(pattern);
-    if (match) {
-      extracted.numero_commessa = match[1] || match[0];
-      extracted.confidence.numero_commessa = 0.9;
+    if (match && match[1]) {
+      extracted.numero_commessa = match[1].trim();
+      extracted.confidence.numero_commessa = 0.95;
       break;
     }
   }
 
-  // Date patterns
+  // ========================================
+  // DATA COMPILAZIONE - Pattern: "Data Compilazione" followed by date
+  // Format: DD/MM/YYYY
+  // ========================================
   const datePatterns = [
-    /(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/,
-    /(\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2})/
+    /Data\s*Compilazione\s*[:\s]*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i,
+    /Data\s*[:\s]*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i,
+    /(\d{1,2}\/\d{1,2}\/\d{4})/
   ];
 
   for (const pattern of datePatterns) {
     const match = text.match(pattern);
-    if (match) {
-      extracted.date = match[1];
-      extracted.confidence.date = 0.8;
+    if (match && match[1]) {
+      extracted.date = match[1].trim();
+      extracted.confidence.date = 0.9;
       break;
     }
   }
 
-  // Machine type
-  if (/tornio/i.test(text)) {
-    extracted.machine_type = 'TORNIO';
-    extracted.confidence.machine_type = 0.9;
-  } else if (/foratr/i.test(text)) {
-    extracted.machine_type = 'FORATRICE';
-    extracted.confidence.machine_type = 0.9;
-  } else if (/pico/i.test(text)) {
-    extracted.machine_type = 'PICO';
-    extracted.confidence.machine_type = 0.9;
-  }
-
-  // Model patterns
-  const modelPatterns = [
-    /(?:modello|model)\s*:?\s*(GGL|GGTRONIC|GGB|PICO|TORNIO.VERTICALE)/i,
-    /(GGTRONIC|GGL|GGB)/i
+  // ========================================
+  // AUTORE - Pattern: "Autore" followed by name
+  // ========================================
+  const authorPatterns = [
+    /Autore\s*[:\s]*([A-Za-zÀ-ÿ\s]+?)(?=\s*Tipologia|\s*$|\s*\n)/i,
+    /Autore\s+([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+)?)/i
   ];
 
-  for (const pattern of modelPatterns) {
+  for (const pattern of authorPatterns) {
     const match = text.match(pattern);
-    if (match) {
-      extracted.model = match[1].toUpperCase();
-      extracted.confidence.model = 0.85;
+    if (match && match[1] && match[1].trim().length > 2) {
+      extracted.author = match[1].trim();
+      extracted.confidence.author = 0.85;
       break;
     }
   }
 
-  // Issue type
-  if (/elettric/i.test(text)) {
-    extracted.issue_type = 'ELETTRICO';
-    extracted.confidence.issue_type = 0.8;
-  } else if (/meccanic/i.test(text)) {
-    extracted.issue_type = 'MECCANICO';
-    extracted.confidence.issue_type = 0.8;
-  }
-
-  // Issue group detection
-  const groupMappings = {
-    'TESTA_PORTA_PEZZO': /testa\s*porta\s*pezzo|mandrino\s*principale/i,
-    'CONTROPUNTA': /contropunta/i,
-    'CARRO': /carro|carrello|slitte/i,
-    'CONVOGLIATORI': /convogliator|trucioli/i,
-    'PULSANTIERA_CN': /pulsantiera|pannello\s*operatore/i,
-    'LUNETTE': /lunett/i,
-    'MANDRINO': /mandrino/i,
-    'SISTEMA_IDRAULICO': /idraulic/i,
-    'SISTEMA_LUBRIFICAZIONE': /lubrific/i,
-    'ELETTRONICA': /elettronic|cnc|plc|inverter/i
+  // ========================================
+  // TIPOLOGIA DIFETTO - Detect checked defect types
+  // Map defect types to issue types and groups
+  // ========================================
+  const defectTypeMapping = {
+    // Defect text => { issueType, issueGroup }
+    'disegno non corretto': { type: 'MECCANICO', group: 'ALTRO' },
+    'pezzo non conforme al disegno': { type: 'MECCANICO', group: 'ALTRO' },
+    'difficoltà di montaggio': { type: 'MECCANICO', group: 'ALTRO' },
+    'difficoltà nella lavorazione meccanica': { type: 'MECCANICO', group: 'CARRO' },
+    'schema elettrico non corretto': { type: 'ELETTRICO', group: 'ELETTRONICA' },
+    'problema plc': { type: 'ELETTRICO', group: 'ELETTRONICA' },
+    'problema cnc': { type: 'ELETTRICO', group: 'PULSANTIERA_CN' },
+    'plc/cnc': { type: 'ELETTRICO', group: 'ELETTRONICA' },
+    'strumenti per montaggio non adeguati': { type: 'MECCANICO', group: 'ALTRO' },
+    'problemi di sicurezza': { type: 'MECCANICO', group: 'ALTRO' },
+    'idraulica': { type: 'MECCANICO', group: 'SISTEMA_IDRAULICO' },
+    'centralina idraulica': { type: 'MECCANICO', group: 'SISTEMA_IDRAULICO' },
+    'carpenterie': { type: 'MECCANICO', group: 'ALTRO' },
+    'lamiere': { type: 'MECCANICO', group: 'ALTRO' },
+    'non conformità della merce': { type: 'MECCANICO', group: 'ALTRO' },
+    'manuali': { type: 'MECCANICO', group: 'ALTRO' },
+    'libri istruzioni': { type: 'MECCANICO', group: 'ALTRO' },
+    'refrigerazione': { type: 'MECCANICO', group: 'SISTEMA_LUBRIFICAZIONE' },
+    'lubrificazione': { type: 'MECCANICO', group: 'SISTEMA_LUBRIFICAZIONE' }
   };
 
-  for (const [group, pattern] of Object.entries(groupMappings)) {
-    if (pattern.test(text)) {
-      extracted.issue_group = group;
-      extracted.confidence.issue_group = 0.7;
-      break;
+  // Check which defect types are mentioned (likely checked in the form)
+  const detectedDefects = [];
+  for (const [defectText, mapping] of Object.entries(defectTypeMapping)) {
+    if (cleanText.toLowerCase().includes(defectText)) {
+      detectedDefects.push({ text: defectText, ...mapping });
     }
   }
 
-  // Customer - look for common patterns
-  const customerPatterns = [
-    /(?:cliente|customer|ditta)\s*:?\s*([A-Za-z\s]+(?:S\.?[rp]\.?[la]\.?|S\.?A\.?|GmbH|Inc\.?)?)/i
-  ];
-
-  for (const pattern of customerPatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      extracted.customer = match[1].trim();
-      extracted.confidence.customer = 0.6;
-      break;
-    }
+  if (detectedDefects.length > 0) {
+    extracted.defect_types = detectedDefects.map(d => d.text);
+    // Use the first detected defect for issue type and group
+    extracted.issue_type = detectedDefects[0].type;
+    extracted.issue_group = detectedDefects[0].group;
+    extracted.confidence.issue_type = 0.8;
+    extracted.confidence.issue_group = 0.7;
   }
 
-  // Try to extract title and description
-  const titlePatterns = [
-    /(?:oggetto|subject|titolo)\s*:?\s*(.+?)(?:\n|$)/i,
-    /(?:problema|guasto|fault)\s*:?\s*(.+?)(?:\n|$)/i
-  ];
-
-  for (const pattern of titlePatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      extracted.title = match[1].trim().substring(0, 200);
-      extracted.confidence.title = 0.7;
-      break;
-    }
-  }
-
-  // Use remaining text as description (truncated)
-  if (!extracted.title && text.length > 50) {
-    // First meaningful line as title
-    const lines = text.split('\n').filter(l => l.trim().length > 10);
-    if (lines.length > 0) {
-      extracted.title = lines[0].substring(0, 200);
-      extracted.confidence.title = 0.4;
-    }
-  }
-
-  // Description - look for description section or use text body
+  // ========================================
+  // DESCRIZIONE NON CONFORMITÀ - Main description
+  // ========================================
   const descPatterns = [
-    /(?:descrizione|description)\s*:?\s*([\s\S]+?)(?:(?=\n[A-Z])|$)/i
+    /Descrizione\s*non\s*conformit[àa]\s*[:\s]*([\s\S]*?)(?=Suggerimenti|Migliorie|$)/i,
+    /Descrizione\s*[:\s]*([\s\S]*?)(?=Suggerimenti|$)/i
   ];
 
   for (const pattern of descPatterns) {
     const match = text.match(pattern);
-    if (match) {
-      extracted.description = match[1].trim().substring(0, 2000);
-      extracted.confidence.description = 0.7;
-      break;
+    if (match && match[1]) {
+      const desc = match[1].trim()
+        .replace(/\s+/g, ' ')
+        .replace(/Suggerimenti.*$/i, '')
+        .trim();
+      if (desc.length > 5) {
+        extracted.description = desc.substring(0, 2000);
+        extracted.confidence.description = 0.9;
+
+        // Use first part of description as title if no title yet
+        if (!extracted.title) {
+          extracted.title = desc.substring(0, 150);
+          if (extracted.title.length === 150) {
+            extracted.title = extracted.title.substring(0, extracted.title.lastIndexOf(' ')) + '...';
+          }
+          extracted.confidence.title = 0.85;
+        }
+        break;
+      }
     }
   }
 
-  if (!extracted.description) {
-    extracted.description = text.substring(0, 2000);
-    extracted.confidence.description = 0.3;
+  // ========================================
+  // SUGGERIMENTI/MIGLIORIE - Resolution notes
+  // ========================================
+  const suggPatterns = [
+    /Suggerimenti\s*[\/]?\s*Migliorie\s*[:\s]*([\s\S]*?)$/i,
+    /Suggerimenti\s*[:\s]*([\s\S]*?)$/i,
+    /Migliorie\s*[:\s]*([\s\S]*?)$/i
+  ];
+
+  for (const pattern of suggPatterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      const suggestion = match[1].trim().replace(/\s+/g, ' ');
+      if (suggestion.length > 3) {
+        extracted.resolution_notes = suggestion.substring(0, 2000);
+        extracted.confidence.resolution_notes = 0.85;
+        break;
+      }
+    }
+  }
+
+  // ========================================
+  // FALLBACK: If no description, use full text
+  // ========================================
+  if (!extracted.description && text.length > 50) {
+    // Remove header/form labels and use remaining content
+    let cleanedText = text
+      .replace(/Registro\s*non\s*conformit[àa]/gi, '')
+      .replace(/Commessa\s*N[°º]?/gi, '')
+      .replace(/Data\s*Compilazione/gi, '')
+      .replace(/Tipologia\s*difetto/gi, '')
+      .replace(/Autore/gi, '')
+      .replace(/Descrizione\s*non\s*conformit[àa]/gi, '')
+      .replace(/Suggerimenti\s*[\/]?\s*Migliorie/gi, '')
+      .trim();
+
+    if (cleanedText.length > 20) {
+      extracted.description = cleanedText.substring(0, 2000);
+      extracted.confidence.description = 0.4;
+    }
+  }
+
+  // ========================================
+  // DEFAULT ISSUE TYPE if not detected
+  // ========================================
+  if (!extracted.issue_type) {
+    // Check for electrical keywords in description
+    const electricalKeywords = /elettric|plc|cnc|encoder|inverter|azionamento|cablaggio|tensione|corrente/i;
+    if (extracted.description && electricalKeywords.test(extracted.description)) {
+      extracted.issue_type = 'ELETTRICO';
+      extracted.confidence.issue_type = 0.6;
+    } else {
+      extracted.issue_type = 'MECCANICO';
+      extracted.confidence.issue_type = 0.5;
+    }
   }
 
   return extracted;

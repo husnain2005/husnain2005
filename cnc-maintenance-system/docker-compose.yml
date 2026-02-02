@@ -134,5 +134,4 @@ volumes:
 
 networks:
   internal:
-    name: cnc_maintenance_network
     driver: bridge

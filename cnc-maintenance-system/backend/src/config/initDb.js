@@ -87,6 +87,14 @@ const initializeDatabase = async () => {
       END $$;
     `);
 
+    await client.query(`
+      DO $$ BEGIN
+        CREATE TYPE intervention_status AS ENUM ('programmato', 'in_corso', 'completato', 'annullato');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+
     // =============================================
     // USERS TABLE
     // =============================================
@@ -303,6 +311,132 @@ const initializeDatabase = async () => {
     `);
 
     // =============================================
+    // INTERVENTIONS TABLE
+    // =============================================
+    console.log('Creating interventions table...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS interventions (
+        id SERIAL PRIMARY KEY,
+        machine_id INTEGER REFERENCES machines(id),
+        issue_id INTEGER REFERENCES issues(id),
+        assigned_to INTEGER REFERENCES users(id),
+        status intervention_status DEFAULT 'programmato',
+        scheduled_date DATE NOT NULL,
+        scheduled_end_date DATE,
+        actual_start_date DATE,
+        actual_end_date DATE,
+        description TEXT,
+        problem_description TEXT,
+        resolution_summary TEXT,
+        travel_notes TEXT,
+        customer_signature TEXT,
+        is_billable BOOLEAN DEFAULT true,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // =============================================
+    // INTERVENTION TECHNICIANS (multiple technicians per intervention)
+    // =============================================
+    console.log('Creating intervention_technicians table...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS intervention_technicians (
+        id SERIAL PRIMARY KEY,
+        intervention_id INTEGER REFERENCES interventions(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id),
+        role VARCHAR(50) DEFAULT 'tecnico',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(intervention_id, user_id)
+      );
+    `);
+
+    // =============================================
+    // INTERVENTION DAYS (daily work tracking)
+    // =============================================
+    console.log('Creating intervention_days table...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS intervention_days (
+        id SERIAL PRIMARY KEY,
+        intervention_id INTEGER REFERENCES interventions(id) ON DELETE CASCADE,
+        work_date DATE NOT NULL,
+        start_time TIME,
+        end_time TIME,
+        hours_worked DECIMAL(4,2),
+        travel_hours DECIMAL(4,2),
+        work_description TEXT,
+        notes TEXT,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(intervention_id, work_date)
+      );
+    `);
+
+    // =============================================
+    // INTERVENTION MATERIALS
+    // =============================================
+    console.log('Creating intervention_materials table...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS intervention_materials (
+        id SERIAL PRIMARY KEY,
+        intervention_id INTEGER REFERENCES interventions(id) ON DELETE CASCADE,
+        material_name VARCHAR(255) NOT NULL,
+        part_number VARCHAR(100),
+        quantity INTEGER DEFAULT 1,
+        unit VARCHAR(50) DEFAULT 'pz',
+        unit_cost DECIMAL(10,2),
+        total_cost DECIMAL(10,2),
+        notes TEXT,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // =============================================
+    // INTERVENTION DOCUMENTS
+    // =============================================
+    console.log('Creating intervention_documents table...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS intervention_documents (
+        id SERIAL PRIMARY KEY,
+        intervention_id INTEGER REFERENCES interventions(id) ON DELETE CASCADE,
+        filename VARCHAR(255) NOT NULL,
+        original_filename VARCHAR(255) NOT NULL,
+        file_path TEXT NOT NULL,
+        file_size INTEGER,
+        mime_type VARCHAR(100),
+        document_type VARCHAR(50),
+        description TEXT,
+        uploaded_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // =============================================
+    // INTERVENTION DAILY REPORTS
+    // =============================================
+    console.log('Creating intervention_reports table...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS intervention_reports (
+        id SERIAL PRIMARY KEY,
+        intervention_id INTEGER REFERENCES interventions(id) ON DELETE CASCADE,
+        day_id INTEGER REFERENCES intervention_days(id) ON DELETE CASCADE,
+        report_date DATE NOT NULL,
+        activities_performed TEXT,
+        problems_encountered TEXT,
+        solutions_applied TEXT,
+        pending_tasks TEXT,
+        customer_feedback TEXT,
+        photos_taken INTEGER DEFAULT 0,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // =============================================
     // AUDIT LOG TABLE
     // =============================================
     console.log('Creating audit_log table...');
@@ -346,6 +480,14 @@ const initializeDatabase = async () => {
     await client.query('CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at DESC);');
 
     await client.query('CREATE INDEX IF NOT EXISTS idx_attachments_issue ON attachments(issue_id);');
+
+    // Intervention indexes
+    await client.query('CREATE INDEX IF NOT EXISTS idx_interventions_machine ON interventions(machine_id);');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_interventions_assigned ON interventions(assigned_to);');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_interventions_status ON interventions(status);');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_interventions_scheduled ON interventions(scheduled_date);');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_intervention_days_date ON intervention_days(work_date);');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_intervention_materials_intervention ON intervention_materials(intervention_id);');
 
     // =============================================
     // INSERT DEFAULT DATA

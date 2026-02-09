@@ -15,6 +15,7 @@ const customersRoutes = require('./routes/customers');
 const attachmentsRoutes = require('./routes/attachments');
 const pdfRoutes = require('./routes/pdf');
 const auditRoutes = require('./routes/audit');
+const interventionsRoutes = require('./routes/interventions');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -83,6 +84,7 @@ app.use('/api/customers', customersRoutes);
 app.use('/api/attachments', attachmentsRoutes);
 app.use('/api/pdf', pdfRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/interventions', interventionsRoutes);
 
 // Serve uploaded files (in production, use nginx)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

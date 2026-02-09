@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const interventionsController = require('../controllers/interventionsController');
-const { authenticateToken, requireRole } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { upload, handleUpload } = require('../middleware/upload');
 
 // All routes require authentication
-router.use(authenticateToken);
+router.use(authenticate);
 
 // Get all interventions (with filtering)
 router.get('/', interventionsController.getInterventions);
@@ -17,28 +17,28 @@ router.get('/calendar', interventionsController.getCalendar);
 router.get('/:id', interventionsController.getIntervention);
 
 // Create new intervention (admin or tecnico)
-router.post('/', requireRole(['admin', 'tecnico']), interventionsController.createIntervention);
+router.post('/', authorize('admin', 'tecnico'), interventionsController.createIntervention);
 
 // Update intervention
-router.put('/:id', requireRole(['admin', 'tecnico']), interventionsController.updateIntervention);
+router.put('/:id', authorize('admin', 'tecnico'), interventionsController.updateIntervention);
 
 // Delete intervention (admin only)
-router.delete('/:id', requireRole(['admin']), interventionsController.deleteIntervention);
+router.delete('/:id', authorize('admin'), interventionsController.deleteIntervention);
 
 // Add day to intervention
-router.post('/:id/days', requireRole(['admin', 'tecnico']), interventionsController.addInterventionDay);
+router.post('/:id/days', authorize('admin', 'tecnico'), interventionsController.addInterventionDay);
 
 // Add material to intervention
-router.post('/:id/materials', requireRole(['admin', 'tecnico']), interventionsController.addInterventionMaterial);
+router.post('/:id/materials', authorize('admin', 'tecnico'), interventionsController.addInterventionMaterial);
 
 // Add daily report
-router.post('/:id/reports', requireRole(['admin', 'tecnico']), interventionsController.addInterventionReport);
+router.post('/:id/reports', authorize('admin', 'tecnico'), interventionsController.addInterventionReport);
 
 // Complete intervention
-router.put('/:id/complete', requireRole(['admin', 'tecnico']), interventionsController.completeIntervention);
+router.put('/:id/complete', authorize('admin', 'tecnico'), interventionsController.completeIntervention);
 
 // Upload document to intervention
-router.post('/:id/documents', requireRole(['admin', 'tecnico']), upload.single('file'), async (req, res) => {
+router.post('/:id/documents', authorize('admin', 'tecnico'), upload.single('file'), async (req, res) => {
   try {
     const { id } = req.params;
     const { document_type, description } = req.body;
@@ -84,7 +84,7 @@ router.post('/:id/documents', requireRole(['admin', 'tecnico']), upload.single('
 });
 
 // Delete document
-router.delete('/:id/documents/:docId', requireRole(['admin', 'tecnico']), async (req, res) => {
+router.delete('/:id/documents/:docId', authorize('admin', 'tecnico'), async (req, res) => {
   try {
     const { id, docId } = req.params;
     const db = require('../config/database');
@@ -125,7 +125,7 @@ router.delete('/:id/documents/:docId', requireRole(['admin', 'tecnico']), async 
 });
 
 // Delete material
-router.delete('/:id/materials/:materialId', requireRole(['admin', 'tecnico']), async (req, res) => {
+router.delete('/:id/materials/:materialId', authorize('admin', 'tecnico'), async (req, res) => {
   try {
     const { id, materialId } = req.params;
     const db = require('../config/database');
@@ -156,7 +156,7 @@ router.delete('/:id/materials/:materialId', requireRole(['admin', 'tecnico']), a
 });
 
 // Update day
-router.put('/:id/days/:dayId', requireRole(['admin', 'tecnico']), async (req, res) => {
+router.put('/:id/days/:dayId', authorize('admin', 'tecnico'), async (req, res) => {
   try {
     const { id, dayId } = req.params;
     const { start_time, end_time, hours_worked, travel_hours, work_description, notes } = req.body;
@@ -197,7 +197,7 @@ router.put('/:id/days/:dayId', requireRole(['admin', 'tecnico']), async (req, re
 });
 
 // Delete day
-router.delete('/:id/days/:dayId', requireRole(['admin', 'tecnico']), async (req, res) => {
+router.delete('/:id/days/:dayId', authorize('admin', 'tecnico'), async (req, res) => {
   try {
     const { id, dayId } = req.params;
     const db = require('../config/database');

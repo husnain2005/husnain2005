@@ -1,0 +1,28 @@
+# Cloudflare Tunnel Configuration
+# Sostituisci <TUNNEL_ID> con il tuo ID tunnel dopo averlo creato
+
+tunnel: <TUNNEL_ID>
+credentials-file: /root/.cloudflared/<TUNNEL_ID>.json
+
+ingress:
+  # Frontend (React app)
+  - hostname: cnc.tuodominio.com
+    service: http://localhost:3000
+
+  # Backend API
+  - hostname: cnc.tuodominio.com
+    path: /api/*
+    service: http://localhost:3001
+
+  # Backend health check
+  - hostname: cnc.tuodominio.com
+    path: /health
+    service: http://localhost:3001
+
+  # Uploads
+  - hostname: cnc.tuodominio.com
+    path: /uploads/*
+    service: http://localhost:3001
+
+  # Catch-all (required)
+  - service: http_status:404

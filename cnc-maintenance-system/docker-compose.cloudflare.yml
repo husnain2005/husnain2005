@@ -1,0 +1,106 @@
+# =============================================================================
+# CNC Maintenance System - Docker Compose con Cloudflare Tunnel
+# =============================================================================
+# Configurazione semplificata per accesso pubblico tramite Cloudflare Tunnel
+# SSL/HTTPS gestito automaticamente da Cloudflare (GRATIS)
+#
+# Avvio: docker compose -f docker-compose.cloudflare.yml up -d
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Database PostgreSQL
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:15-alpine
+    container_name: cnc_maintenance_db
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:-cnc_maintenance}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Backend API Node.js
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cnc_maintenance_backend
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-cnc_maintenance}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres123}
+      JWT_SECRET: ${JWT_SECRET:-cambia-questa-chiave-segreta-molto-lunga-123}
+      JWT_EXPIRES_IN: 24h
+      UPLOAD_DIR: /app/uploads
+      MAX_FILE_SIZE: 52428800
+      CORS_ORIGIN: ${PUBLIC_URL:-https://cnc.example.com}
+    volumes:
+      - uploads_data:/app/uploads
+    ports:
+      - "3001:3001"
+
+  # ---------------------------------------------------------------------------
+  # Frontend React (build statico con Nginx)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${PUBLIC_URL:-https://cnc.example.com}/api
+    container_name: cnc_maintenance_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+  # ---------------------------------------------------------------------------
+  # Nginx Reverse Proxy
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:alpine
+    container_name: cnc_maintenance_nginx
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+
+  # ---------------------------------------------------------------------------
+  # Cloudflare Tunnel - Accesso Pubblico Sicuro
+  # ---------------------------------------------------------------------------
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cnc_cloudflare_tunnel
+    restart: always
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - nginx
+
+volumes:
+  postgres_data:
+  uploads_data:

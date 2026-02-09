@@ -6,6 +6,7 @@ const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { verifyCsrf } = require('./middleware/csrf');
+const { auditMiddleware } = require('./middleware/audit');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -35,6 +36,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ─── Cookie Parser ───────────────────────────────────────────────────────────
 app.use(cookieParser());
+
+// ─── Audit Middleware ────────────────────────────────────────────────────────
+app.use(auditMiddleware);
 
 // ─── CSRF Protection ─────────────────────────────────────────────────────────
 // Applied globally; the middleware itself skips safe methods (GET/HEAD/OPTIONS)

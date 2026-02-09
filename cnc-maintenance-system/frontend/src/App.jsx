@@ -14,6 +14,9 @@ import Customers from './pages/Customers';
 import MapView from './pages/MapView';
 import PdfImport from './pages/PdfImport';
 import Users from './pages/Users';
+import Interventions from './pages/Interventions';
+import InterventionDetail from './pages/InterventionDetail';
+import InterventionCreate from './pages/InterventionCreate';
 
 // Protected Route wrapper
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
@@ -71,6 +74,9 @@ function App() {
         <Route path="customers" element={<Customers />} />
         <Route path="map" element={<MapView />} />
         <Route path="pdf-import" element={<PdfImport />} />
+        <Route path="interventions" element={<Interventions />} />
+        <Route path="interventions/new" element={<InterventionCreate />} />
+        <Route path="interventions/:id" element={<InterventionDetail />} />
         <Route path="users" element={
           <ProtectedRoute requireAdmin>
             <Users />

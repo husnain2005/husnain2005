@@ -114,4 +114,38 @@ export const auditApi = {
   getRecordHistory: (tableName, recordId) => api.get(`/audit/${tableName}/${recordId}`),
 };
 
+export const interventionsApi = {
+  getAll: (params) => api.get('/interventions', { params }),
+  getById: (id) => api.get(`/interventions/${id}`),
+  create: (data) => api.post('/interventions', data),
+  update: (id, data) => api.put(`/interventions/${id}`, data),
+  delete: (id) => api.delete(`/interventions/${id}`),
+  complete: (id, data) => api.put(`/interventions/${id}/complete`, data),
+  getCalendar: (params) => api.get('/interventions/calendar', { params }),
+
+  // Days
+  addDay: (id, data) => api.post(`/interventions/${id}/days`, data),
+  updateDay: (id, dayId, data) => api.put(`/interventions/${id}/days/${dayId}`, data),
+  deleteDay: (id, dayId) => api.delete(`/interventions/${id}/days/${dayId}`),
+
+  // Materials
+  addMaterial: (id, data) => api.post(`/interventions/${id}/materials`, data),
+  deleteMaterial: (id, materialId) => api.delete(`/interventions/${id}/materials/${materialId}`),
+
+  // Reports
+  addReport: (id, data) => api.post(`/interventions/${id}/reports`, data),
+
+  // Documents
+  uploadDocument: (id, file, documentType, description) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (documentType) formData.append('document_type', documentType);
+    if (description) formData.append('description', description);
+    return api.post(`/interventions/${id}/documents`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  deleteDocument: (id, docId) => api.delete(`/interventions/${id}/documents/${docId}`),
+};
+
 export default api;

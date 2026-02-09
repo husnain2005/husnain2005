@@ -12,13 +12,15 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronDown
+  ChevronDown,
+  Calendar
 } from 'lucide-react';
 
 const navItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/machines', icon: Wrench, label: 'Macchine' },
   { path: '/issues', icon: AlertTriangle, label: 'Problematiche' },
+  { path: '/interventions', icon: Calendar, label: 'Interventi' },
   { path: '/customers', icon: Building2, label: 'Clienti' },
   { path: '/map', icon: MapPin, label: 'Mappa' },
   { path: '/pdf-import', icon: FileText, label: 'Import PDF' },

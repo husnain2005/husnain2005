@@ -183,8 +183,7 @@ def stampa_risultati_esatti(duplicati: dict[str, list[str]]):
     print("=" * 80)
 
     for idx, (domanda, file_list) in enumerate(ordinati, 1):
-        testo = domanda if len(domanda) <= 120 else domanda[:117] + "..."
-        print(f"\n  [{idx}] \"{testo}\"")
+        print(f"\n  [{idx}] \"{domanda}\"")
         print(f"      Presente in {len(file_list)} file:")
         for f in file_list:
             print(f"        - {f}")
@@ -313,6 +312,19 @@ def main():
     if not args.solo_esatte:
         print(f"  Gruppi simili:          {len(simili)}")
     print()
+
+    # 5b. Stampa elenco finale delle domande identiche
+    if duplicati:
+        print("=" * 80)
+        print("  ELENCO DOMANDE IDENTICHE")
+        print("=" * 80)
+        for idx, (domanda, file_list) in enumerate(
+            sorted(duplicati.items(), key=lambda x: len(x[1]), reverse=True), 1
+        ):
+            print(f"\n  {idx}. {domanda}")
+            print(f"     File: {', '.join(file_list)}")
+        print("\n" + "=" * 80)
+        print()
 
     # 6. Esporta CSV
     if args.esporta:

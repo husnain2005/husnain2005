@@ -35,31 +35,78 @@ Sistema gestionale web per la gestione di problematiche e manutenzioni di macchi
 - **Mappa**: Leaflet + React-Leaflet
 - **Containerizzazione**: Docker + Docker Compose
 
-## Quick Start
+## Installazione su un nuovo PC
 
-### Prerequisiti
-- Docker e Docker Compose
-- Node.js 20+ (per sviluppo locale)
+Segui questi passi per installare l'applicazione su qualsiasi PC da zero.
 
-### Avvio con Docker
+### 1. Installa i prerequisiti
+
+- **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** — include Docker e Docker Compose
+- **[Git](https://git-scm.com/downloads)** — per scaricare il codice
+
+### 2. Scarica il progetto
 
 ```bash
-# Clona il repository
-cd cnc-maintenance-system
+git clone git@github.com:husnain2005/husnain2005.git
+cd husnain2005/cnc-maintenance-system
+```
 
-# Avvia tutti i servizi
+### 3. Crea il file `.env`
+
+Copia il file `.env` dal vecchio PC nella cartella `cnc-maintenance-system/`.
+
+Oppure creane uno nuovo copiando il template:
+
+```bash
+cp .env.example .env
+```
+
+Poi apri `.env` con un editor di testo e inserisci le tue password.
+
+> Il file `.env` non è su GitHub per sicurezza — va copiato manualmente.
+
+### 4. Avvia l'applicazione
+
+```bash
 docker-compose up -d
+```
 
-# Inizializza il database
+Docker scarica tutto automaticamente (database, backend, frontend). Al primo avvio impiega qualche minuto.
+
+### 5. Inizializza il database (solo al primo avvio)
+
+```bash
 docker-compose exec backend npm run db:init
-
-# Popola con dati demo
 docker-compose exec backend npm run db:seed
 ```
 
-L'applicazione sarà disponibile su:
-- Frontend: http://localhost:3000
-- API: http://localhost:3001
+L'applicazione è pronta su:
+- **Frontend:** http://localhost
+- **API:** http://localhost:3001
+
+---
+
+## Aggiornare l'applicazione (su tutti i PC)
+
+Quando fai modifiche su un PC, esegui:
+
+```bash
+# Sul PC dove hai fatto le modifiche
+git add .
+git commit -m "descrizione modifiche"
+git push origin main
+```
+
+Sull'altro PC per ricevere gli aggiornamenti:
+
+```bash
+git pull origin main
+docker-compose up -d --build
+```
+
+---
+
+## Quick Start
 
 ### Credenziali Demo
 

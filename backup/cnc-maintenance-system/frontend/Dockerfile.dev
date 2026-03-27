@@ -1,0 +1,12 @@
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+# Copia i file di configurazione nell'immagine (non cambiano spesso)
+COPY vite.config.js ./
+COPY index.html ./
+COPY tailwind.config.js ./
+COPY postcss.config.js ./
+# src/ e public/ vengono montati da WSL come bind mount
+EXPOSE 3000
+CMD ["npm", "run", "dev"]

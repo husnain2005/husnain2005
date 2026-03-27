@@ -56,7 +56,7 @@ const imageFilter = (req, file, cb) => {
   }
 };
 
-// File filter for attachments (images + documents)
+// File filter for attachments (images + documents + videos)
 const attachmentFilter = (req, file, cb) => {
   const allowedMimes = [
     'image/jpeg', 'image/png', 'image/gif', 'image/webp',
@@ -65,7 +65,9 @@ const attachmentFilter = (req, file, cb) => {
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'text/plain'
+    'text/plain',
+    'video/mp4', 'video/webm', 'video/ogg',
+    'video/quicktime', 'video/x-msvideo', 'video/x-matroska'
   ];
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
@@ -83,12 +85,24 @@ const pdfFilter = (req, file, cb) => {
   }
 };
 
-// Upload middleware for attachments
+const MAX_VIDEO_SIZE = parseInt(process.env.MAX_VIDEO_SIZE) || 500 * 1024 * 1024; // 500MB
+
+// Upload middleware for attachments (no video — 10MB limit)
 const uploadAttachment = multer({
   storage: attachmentStorage,
   limits: {
     fileSize: MAX_FILE_SIZE,
-    files: 10 // Max 10 files at once
+    files: 10
+  },
+  fileFilter: attachmentFilter
+});
+
+// Upload middleware for attachments including videos (500MB limit)
+const uploadAttachmentWithVideo = multer({
+  storage: attachmentStorage,
+  limits: {
+    fileSize: MAX_VIDEO_SIZE,
+    files: 10
   },
   fileFilter: attachmentFilter
 });
@@ -109,7 +123,7 @@ const handleUploadError = (err, req, res, next) => {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
         error: 'File troppo grande',
-        message: `La dimensione massima del file è ${MAX_FILE_SIZE / 1024 / 1024}MB`
+        message: `La dimensione massima è ${MAX_FILE_SIZE / 1024 / 1024}MB per documenti e ${MAX_VIDEO_SIZE / 1024 / 1024}MB per video`
       });
     }
     if (err.code === 'LIMIT_FILE_COUNT') {
@@ -134,6 +148,7 @@ const handleUploadError = (err, req, res, next) => {
 
 module.exports = {
   uploadAttachment,
+  uploadAttachmentWithVideo,
   uploadPdf,
   handleUploadError,
   UPLOAD_DIR

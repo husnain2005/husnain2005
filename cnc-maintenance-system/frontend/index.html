@@ -4,14 +4,14 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CNC Maintenance System</title>
+    <title>Gestionale Macchine GIANA</title>
 
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#3b82f6" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="CNC Maint" />
-    <meta name="description" content="Sistema di Gestione Manutenzione CNC" />
+    <meta name="apple-mobile-web-app-title" content="GIANA" />
+    <meta name="description" content="Gestionale Macchine GIANA" />
 
     <!-- Apple Touch Icon -->
     <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
@@ -21,6 +21,14 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Rimuove automaticamente i vecchi Service Worker ad ogni caricamento
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          regs.forEach(r => r.unregister());
+        });
+      }
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

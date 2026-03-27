@@ -604,6 +604,7 @@ function InterventionDetail() {
                 type="file"
                 onChange={handleUploadDocument}
                 className="hidden"
+                accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx"
               />
             </label>
           </div>
@@ -618,7 +619,15 @@ function InterventionDetail() {
               {documents.map(doc => (
                 <div key={doc.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
                   <div className="flex items-center gap-3">
-                    <FileText size={24} className="text-gray-400" />
+                    {doc.mime_type?.startsWith('video/') ? (
+                      <video
+                        src={`/uploads/attachments/${doc.filename}`}
+                        className="w-16 h-12 object-cover rounded bg-black flex-shrink-0"
+                        preload="metadata"
+                      />
+                    ) : (
+                      <FileText size={24} className="text-gray-400 flex-shrink-0" />
+                    )}
                     <div>
                       <div className="font-medium">{doc.original_filename}</div>
                       <div className="text-sm text-gray-500">
@@ -629,7 +638,7 @@ function InterventionDetail() {
                   </div>
                   <div className="flex gap-2">
                     <a
-                      href={`/uploads/${doc.file_path}`}
+                      href={`/uploads/attachments/${doc.filename}`}
                       target="_blank"
                       className="p-2 text-primary-600 hover:bg-primary-50 rounded"
                     >

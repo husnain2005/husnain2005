@@ -10,6 +10,15 @@ const seedDatabase = async () => {
 
   try {
     await client.query('BEGIN');
+
+    // Check if already seeded
+    const existing = await client.query('SELECT COUNT(*) FROM machines');
+    if (parseInt(existing.rows[0].count) > 0) {
+      console.log('Database already seeded, skipping.');
+      await client.query('ROLLBACK');
+      return;
+    }
+
     console.log('Seeding database with demo data...');
 
     // =============================================
@@ -100,6 +109,7 @@ const seedDatabase = async () => {
         ('COM-2023-067', $1, $15, $16, 'DOPPIA_XZ', 'SINUMERIK_ONE', 'SN-GGT-007', 2023, 43.7696, 11.2558, 'Via Artigianale 22, Firenze', NULL, $18),
         ('COM-2019-145', $17, $10, $6, 'SINGOLA_XZ', 'CSE', 'SN-GGL-002', 2019, 45.0703, 7.6869, 'Via della Meccanica 12, Torino - Reparto storico', 'Macchina revisionata 2023', $18),
         ('COM-2024-019', $12, $13, $8, NULL, 'FANUC', 'SN-GGB-003', 2024, 45.4642, 9.1900, 'Viale dell''Industria 88, Milano', 'Ultimo modello', $18)
+      ON CONFLICT (numero_commessa) DO NOTHING
     `, [
       modelsMap['GGTRONIC'], // $1
       getSizeId('GGTRONIC', 2000), // $2

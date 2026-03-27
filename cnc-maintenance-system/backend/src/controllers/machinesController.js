@@ -107,33 +107,57 @@ const getMachines = async (req, res) => {
       paramIndex++;
     }
 
-    query += ` ORDER BY m.created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
+    const limitParam = paramIndex++;
+    const offsetParam = paramIndex++;
+    query += ` ORDER BY m.created_at DESC LIMIT $${limitParam} OFFSET $${offsetParam}`;
     params.push(parseInt(limit), parseInt(offset));
 
     const result = await db.query(query, params);
 
-    // Get total count for pagination
+    // Get total count for pagination — apply the same filters (without LIMIT/OFFSET)
     let countQuery = `
       SELECT COUNT(*) as total
       FROM machines m
       LEFT JOIN machine_models mm ON m.model_id = mm.id
+      LEFT JOIN machine_sizes ms ON m.size_id = ms.id
       LEFT JOIN customers c ON m.customer_id = c.id
       WHERE m.is_active = true
     `;
-    const countParams = [];
+    const countParams = params.slice(0, params.length - 2); // strip LIMIT and OFFSET
     let countParamIndex = 1;
 
     if (numero_commessa) {
       countQuery += ` AND m.numero_commessa ILIKE $${countParamIndex++}`;
-      countParams.push(`%${numero_commessa}%`);
     }
     if (machine_type) {
       countQuery += ` AND mm.machine_type = $${countParamIndex++}`;
-      countParams.push(machine_type);
+    }
+    if (model_id) {
+      countQuery += ` AND m.model_id = $${countParamIndex++}`;
+    }
+    if (customer_id) {
+      countQuery += ` AND m.customer_id = $${countParamIndex++}`;
     }
     if (customer_name) {
       countQuery += ` AND c.name ILIKE $${countParamIndex++}`;
-      countParams.push(`%${customer_name}%`);
+    }
+    if (axis_type) {
+      countQuery += ` AND m.axis_type = $${countParamIndex++}`;
+    }
+    if (control_type) {
+      countQuery += ` AND m.control_type = $${countParamIndex++}`;
+    }
+    if (size) {
+      countQuery += ` AND ms.size_value = $${countParamIndex++}`;
+    }
+    if (search) {
+      countQuery += ` AND (
+        m.numero_commessa ILIKE $${countParamIndex} OR
+        m.serial_number ILIKE $${countParamIndex} OR
+        c.name ILIKE $${countParamIndex} OR
+        m.address ILIKE $${countParamIndex}
+      )`;
+      countParamIndex++;
     }
 
     const countResult = await db.query(countQuery, countParams);
@@ -520,6 +544,50 @@ const getSizesByModel = async (req, res) => {
   }
 };
 
+const getAxisTypes = async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT unnest(enum_range(NULL::axis_type))::text AS value`
+    );
+    res.json({ axis_types: result.rows.map(r => r.value) });
+  } catch (err) {
+    console.error('getAxisTypes error:', err);
+    res.status(500).json({ error: 'Errore nel recupero dei tipi assi' });
+  }
+};
+
+const addAxisType = async (req, res) => {
+  try {
+    const { value } = req.body;
+    if (!value || typeof value !== 'string') {
+      return res.status(400).json({ error: 'Valore non valido' });
+    }
+
+    const enumValue = value.trim().toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+    if (!enumValue) {
+      return res.status(400).json({ error: 'Valore non valido dopo la formattazione' });
+    }
+
+    const existing = await db.query(
+      `SELECT unnest(enum_range(NULL::axis_type))::text AS value`
+    );
+    const currentValues = existing.rows.map(r => r.value);
+    if (currentValues.includes(enumValue)) {
+      return res.json({ axis_types: currentValues, value: enumValue, already_exists: true });
+    }
+
+    await db.query(`ALTER TYPE axis_type ADD VALUE '${enumValue}'`);
+
+    const updated = await db.query(
+      `SELECT unnest(enum_range(NULL::axis_type))::text AS value`
+    );
+    res.json({ axis_types: updated.rows.map(r => r.value), value: enumValue, added: true });
+  } catch (err) {
+    console.error('addAxisType error:', err);
+    res.status(500).json({ error: 'Errore durante l\'aggiunta del tipo assi' });
+  }
+};
+
 module.exports = {
   getMachines,
   getMachine,
@@ -528,5 +596,7 @@ module.exports = {
   deleteMachine,
   getMachinesForMap,
   getModels,
-  getSizesByModel
+  getSizesByModel,
+  getAxisTypes,
+  addAxisType
 };

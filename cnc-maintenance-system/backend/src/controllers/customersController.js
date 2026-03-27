@@ -1,4 +1,46 @@
 const db = require('../config/database');
+const https = require('https');
+
+// Mappa nomi paese italiano → codice ISO per Nominatim
+const COUNTRY_TO_ISO = {
+  'Italia': 'it', 'Stati Uniti': 'us', 'Emirati Arabi Uniti': 'ae',
+  'Germania': 'de', 'Francia': 'fr', 'Spagna': 'es', 'Regno Unito': 'gb',
+  'Svizzera': 'ch', 'Austria': 'at', 'Belgio': 'be', 'Paesi Bassi': 'nl',
+  'Polonia': 'pl', 'Repubblica Ceca': 'cz', 'Romania': 'ro', 'Turchia': 'tr',
+  'Arabia Saudita': 'sa', 'Qatar': 'qa', 'Kuwait': 'kw', 'Cina': 'cn',
+  'Giappone': 'jp', 'Corea del Sud': 'kr', 'India': 'in', 'Brasile': 'br',
+  'Argentina': 'ar', 'Messico': 'mx', 'Canada': 'ca', 'Australia': 'au'
+};
+
+async function geocodeAddress({ address, city, province, postal_code, country }) {
+  return new Promise((resolve) => {
+    try {
+      const parts = [address, city, province, postal_code, country].filter(Boolean);
+      if (parts.length < 2) return resolve(null);
+
+      const q = encodeURIComponent(parts.join(', '));
+      const cc = COUNTRY_TO_ISO[country] || '';
+      const url = `https://nominatim.openstreetmap.org/search?q=${q}${cc ? `&countrycodes=${cc}` : ''}&format=json&limit=1&addressdetails=0`;
+
+      const req = https.get(url, { headers: { 'User-Agent': 'CNCMaintenanceSystem/1.0' } }, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          try {
+            const results = JSON.parse(data);
+            if (results.length > 0) {
+              resolve({ lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) });
+            } else {
+              resolve(null);
+            }
+          } catch { resolve(null); }
+        });
+      });
+      req.on('error', () => resolve(null));
+      req.setTimeout(5000, () => { req.destroy(); resolve(null); });
+    } catch { resolve(null); }
+  });
+}
 
 /**
  * Get all customers
@@ -25,7 +67,9 @@ const getCustomers = async (req, res) => {
       paramIndex++;
     }
 
-    query += ` ORDER BY c.name LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
+    const limitParam = paramIndex++;
+    const offsetParam = paramIndex++;
+    query += ` ORDER BY c.name LIMIT $${limitParam} OFFSET $${offsetParam}`;
     params.push(parseInt(limit), parseInt(offset));
 
     const result = await db.query(query, params);
@@ -129,6 +173,14 @@ const createCustomer = async (req, res) => {
       });
     }
 
+    // Auto-geocodifica se non sono già fornite le coordinate
+    let finalLat = latitude || null;
+    let finalLng = longitude || null;
+    if (!finalLat && (address || city)) {
+      const geo = await geocodeAddress({ address, city, province, postal_code, country: country || 'Italia' });
+      if (geo) { finalLat = geo.lat; finalLng = geo.lng; }
+    }
+
     const result = await db.query(`
       INSERT INTO customers (
         code, name, address, city, province, country, postal_code,
@@ -137,7 +189,7 @@ const createCustomer = async (req, res) => {
       RETURNING *
     `, [
       code, name, address, city, province, country || 'Italia', postal_code,
-      phone, email, vat_number, latitude, longitude, notes, req.user.id
+      phone, email, vat_number, finalLat, finalLng, notes, req.user.id
     ]);
 
     // Audit log
@@ -281,10 +333,53 @@ const deleteCustomer = async (req, res) => {
   }
 };
 
+const getCustomersForMap = async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT
+        c.id, c.name, c.code, c.address, c.city, c.province, c.country,
+        c.phone, c.email, c.latitude, c.longitude,
+        COUNT(DISTINCT m.id) FILTER (WHERE m.is_active = true) AS machines_count,
+        COUNT(DISTINCT i.id) FILTER (WHERE i.status = 'aperta') AS open_issues_count
+      FROM customers c
+      LEFT JOIN machines m ON m.customer_id = c.id AND m.is_active = true
+      LEFT JOIN issues i ON i.machine_id = m.id AND i.status = 'aperta'
+      WHERE c.is_active = true AND c.latitude IS NOT NULL AND c.longitude IS NOT NULL
+      GROUP BY c.id
+      ORDER BY c.name
+    `);
+    res.json({ customers: result.rows });
+  } catch (err) {
+    console.error('getCustomersForMap error:', err);
+    res.status(500).json({ error: 'Errore nel recupero clienti per mappa' });
+  }
+};
+
+const geocodeCustomer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await db.query('SELECT * FROM customers WHERE id = $1 AND is_active = true', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Cliente non trovato' });
+
+    const c = result.rows[0];
+    const geo = await geocodeAddress({ address: c.address, city: c.city, province: c.province, postal_code: c.postal_code, country: c.country });
+
+    if (!geo) return res.status(422).json({ error: 'Indirizzo non trovato. Verifica città e paese.' });
+
+    await db.query('UPDATE customers SET latitude = $1, longitude = $2, updated_at = NOW() WHERE id = $3', [geo.lat, geo.lng, id]);
+    res.json({ message: 'Posizione aggiornata', latitude: geo.lat, longitude: geo.lng });
+  } catch (err) {
+    console.error('geocodeCustomer error:', err);
+    res.status(500).json({ error: 'Errore durante la geocodifica' });
+  }
+};
+
 module.exports = {
   getCustomers,
   getCustomer,
   createCustomer,
   updateCustomer,
-  deleteCustomer
+  deleteCustomer,
+  getCustomersForMap,
+  geocodeCustomer
 };

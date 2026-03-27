@@ -14,6 +14,7 @@ import Customers from './pages/Customers';
 import MapView from './pages/MapView';
 import PdfImport from './pages/PdfImport';
 import Users from './pages/Users';
+import Profile from './pages/Profile';
 import Interventions from './pages/Interventions';
 import InterventionDetail from './pages/InterventionDetail';
 import InterventionCreate from './pages/InterventionCreate';
@@ -82,6 +83,7 @@ function App() {
             <Users />
           </ProtectedRoute>
         } />
+        <Route path="profile" element={<Profile />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

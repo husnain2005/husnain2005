@@ -4,7 +4,7 @@ const issuesController = require('../controllers/issuesController');
 const attachmentsController = require('../controllers/attachmentsController');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditMiddleware } = require('../middleware/audit');
-const { uploadAttachment, handleUploadError } = require('../middleware/upload');
+const { uploadAttachmentWithVideo, handleUploadError } = require('../middleware/upload');
 
 // Get issue groups (for dropdowns)
 router.get('/groups', authenticate, issuesController.getIssueGroups);
@@ -27,7 +27,7 @@ router.post(
   '/:id/attachments',
   authenticate,
   authorize('admin', 'tecnico'),
-  uploadAttachment.array('files', 10),
+  uploadAttachmentWithVideo.array('files', 10),
   handleUploadError,
   attachmentsController.uploadAttachments
 );

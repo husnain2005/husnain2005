@@ -85,6 +85,8 @@ export const customersApi = {
   create: (data) => api.post('/customers', data),
   update: (id, data) => api.put(`/customers/${id}`, data),
   delete: (id) => api.delete(`/customers/${id}`),
+  getForMap: () => api.get('/customers/map'),
+  geocode: (id) => api.post(`/customers/${id}/geocode`),
 };
 
 export const pdfApi = {
@@ -106,6 +108,7 @@ export const usersApi = {
   getAll: () => api.get('/auth/users'),
   create: (data) => api.post('/auth/users', data),
   update: (id, data) => api.put(`/auth/users/${id}`, data),
+  resetPassword: (id, newPassword) => api.post(`/auth/users/${id}/reset-password`, { newPassword }),
   changePassword: (data) => api.post('/auth/change-password', data),
 };
 

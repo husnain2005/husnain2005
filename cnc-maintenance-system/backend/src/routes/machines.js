@@ -8,6 +8,10 @@ const { auditMiddleware } = require('../middleware/audit');
 router.get('/models', authenticate, machinesController.getModels);
 router.get('/models/:modelId/sizes', authenticate, machinesController.getSizesByModel);
 
+// Axis types
+router.get('/axis-types', authenticate, machinesController.getAxisTypes);
+router.post('/axis-types', authenticate, authorize('admin', 'tecnico'), machinesController.addAxisType);
+
 // Get machines for map view
 router.get('/map', authenticate, machinesController.getMachinesForMap);
 

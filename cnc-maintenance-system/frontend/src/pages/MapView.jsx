@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { machinesApi } from '../services/api';
+import { machinesApi, customersApi } from '../services/api';
 import { Wrench, AlertTriangle, Building2, ExternalLink } from 'lucide-react';
 
-// Fix for default marker icons in React-Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
@@ -13,97 +12,103 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
-// Custom marker icons
-const createIcon = (color) => new L.DivIcon({
-  className: 'custom-marker',
-  html: `<div style="
-    background-color: ${color};
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: 3px solid white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  "></div>`,
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
+const createPinIcon = (color, letter) => new L.DivIcon({
+  className: '',
+  html: `<div style="position:relative;width:32px;height:38px;">
+    <div style="width:32px;height:32px;background:${color};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
+      <span style="transform:rotate(45deg);color:white;font-size:13px;font-weight:700;line-height:1;">${letter}</span>
+    </div>
+  </div>`,
+  iconSize: [32, 38],
+  iconAnchor: [16, 38],
+  popupAnchor: [0, -40],
 });
 
-const greenIcon = createIcon('#22c55e');
-const redIcon = createIcon('#ef4444');
-const blueIcon = createIcon('#3b82f6');
+const iconMachineOk    = createPinIcon('#22c55e', '⚙');
+const iconMachineIssue = createPinIcon('#ef4444', '⚙');
+const iconCustOnly     = createPinIcon('#3b82f6', 'C');
+const iconCustMachine  = createPinIcon('#8b5cf6', 'C');
+const iconCustIssue    = createPinIcon('#f97316', 'C');
 
-// Component to center map on selected location
 function MapController({ center, zoom }) {
   const map = useMap();
-
-  useEffect(() => {
-    if (center) {
-      map.setView(center, zoom || 12);
-    }
-  }, [center, zoom, map]);
-
+  useEffect(() => { if (center) map.setView(center, zoom || 12); }, [center, zoom, map]);
   return null;
 }
 
 function MapView() {
   const [searchParams] = useSearchParams();
-  const [machines, setMachines] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedMachine, setSelectedMachine] = useState(null);
+  const [machines, setMachines]     = useState([]);
+  const [customers, setCustomers]   = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [layer, setLayer]           = useState('all');
+  const [selected, setSelected]     = useState(null);
+  const [selectedType, setSelectedType] = useState(null);
 
   const lat = parseFloat(searchParams.get('lat'));
   const lng = parseFloat(searchParams.get('lng'));
   const machineId = searchParams.get('machine');
-
-  const center = lat && lng ? [lat, lng] : [45.4642, 9.1900]; // Default: Milan
+  const center      = lat && lng ? [lat, lng] : [44.0, 11.0];
   const defaultZoom = lat && lng ? 14 : 6;
 
   useEffect(() => {
-    loadMachines();
+    Promise.all([
+      machinesApi.getForMap().catch(() => ({ data: { machines: [] } })),
+      customersApi.getForMap().catch(() => ({ data: { customers: [] } })),
+    ]).then(([mRes, cRes]) => {
+      const ms = mRes.data.machines || [];
+      const cs = cRes.data.customers || [];
+      setMachines(ms);
+      setCustomers(cs);
+      if (machineId) {
+        const m = ms.find(m => m.id === parseInt(machineId));
+        if (m) { setSelected(m); setSelectedType('machine'); }
+      }
+    }).finally(() => setLoading(false));
   }, []);
 
-  const loadMachines = async () => {
-    try {
-      const response = await machinesApi.getForMap();
-      setMachines(response.data.machines);
+  const showMachines  = layer === 'all' || layer === 'machines';
+  const showCustomers = layer === 'all' || layer === 'customers';
+  const visMachines   = showMachines  ? machines.filter(m => m.latitude && m.longitude)  : [];
+  const visCust       = showCustomers ? customers.filter(c => c.latitude && c.longitude) : [];
 
-      if (machineId) {
-        const machine = response.data.machines.find(m => m.id === parseInt(machineId));
-        if (machine) {
-          setSelectedMachine(machine);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load machines:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getMarkerIcon = (machine) => {
-    if (machine.open_issues_count > 0) return redIcon;
-    return greenIcon;
+  const getMachineIcon  = (m) => m.open_issues_count > 0 ? iconMachineIssue : iconMachineOk;
+  const getCustomerIcon = (c) => {
+    if (c.open_issues_count > 0) return iconCustIssue;
+    if (c.machines_count > 0)    return iconCustMachine;
+    return iconCustOnly;
   };
 
   return (
     <div className="h-[calc(100vh-4rem)] lg:h-screen flex flex-col">
       {/* Header */}
-      <div className="bg-white p-4 shadow-sm flex items-center justify-between">
+      <div className="bg-white px-4 py-3 shadow-sm flex flex-wrap items-center gap-3 justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-800">Mappa Macchine</h1>
-          <p className="text-sm text-gray-500">
-            {machines.length} macchine geolocalizzate
-          </p>
+          <h1 className="text-xl font-bold text-gray-800">Mappa</h1>
+          <p className="text-xs text-gray-500">{visMachines.length} macchine · {visCust.length} clienti</p>
         </div>
-        <div className="flex items-center gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-green-500"></span>
-            <span>OK</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-red-500"></span>
-            <span>Problemi attivi</span>
-          </div>
+
+        {/* Toggle layer */}
+        <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm font-medium">
+          {[['all','Tutto'],['machines','Macchine'],['customers','Clienti']].map(([k,l]) => (
+            <button key={k} onClick={() => setLayer(k)}
+              className={`px-3 py-1.5 transition-colors ${layer===k ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
+              {l}
+            </button>
+          ))}
+        </div>
+
+        {/* Legenda */}
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+          {showMachines && <>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-500 inline-block"/>Macchina OK</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500 inline-block"/>Macchina con problemi</span>
+          </>}
+          {showCustomers && <>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-500 inline-block"/>Cliente (no macchine)</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-purple-500 inline-block"/>Cliente con macchine</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-orange-500 inline-block"/>Cliente con problemi</span>
+          </>}
         </div>
       </div>
 
@@ -111,67 +116,42 @@ function MapView() {
       <div className="flex-1 relative">
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-            <div className="loader"></div>
+            <div className="loader"/>
           </div>
         ) : (
-          <MapContainer
-            center={center}
-            zoom={defaultZoom}
-            className="h-full w-full"
-            scrollWheelZoom={true}
-          >
+          <MapContainer center={center} zoom={defaultZoom} className="h-full w-full" scrollWheelZoom>
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+            <MapController center={lat && lng ? center : null} zoom={14}/>
 
-            <MapController center={lat && lng ? center : null} zoom={14} />
+            {visMachines.map(m => (
+              <Marker key={`m-${m.id}`} position={[m.latitude, m.longitude]} icon={getMachineIcon(m)}
+                eventHandlers={{ click: () => { setSelected(m); setSelectedType('machine'); } }}>
+                <Popup maxWidth={280}>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 font-semibold text-primary-700"><Wrench size={14}/>{m.numero_commessa}</div>
+                    <p className="text-sm text-gray-600">{m.machine_type} – {m.model_name}</p>
+                    {m.customer_name && <p className="text-sm text-gray-500 flex items-center gap-1"><Building2 size={12}/>{m.customer_name}</p>}
+                    {m.address && <p className="text-xs text-gray-400">{m.address}</p>}
+                    {m.open_issues_count > 0 && <p className="text-sm text-red-600 flex items-center gap-1"><AlertTriangle size={12}/>{m.open_issues_count} problematiche aperte</p>}
+                    <Link to={`/machines/${m.id}`} className="inline-flex items-center gap-1 text-primary-600 text-sm hover:underline"><ExternalLink size={11}/>Dettagli macchina</Link>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
 
-            {machines.map(machine => (
-              <Marker
-                key={machine.id}
-                position={[machine.latitude, machine.longitude]}
-                icon={getMarkerIcon(machine)}
-                eventHandlers={{
-                  click: () => setSelectedMachine(machine),
-                }}
-              >
-                <Popup maxWidth={300}>
-                  <div className="min-w-[200px]">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Wrench size={16} className="text-primary-600" />
-                      <span className="font-semibold">{machine.numero_commessa}</span>
-                    </div>
-
-                    <div className="space-y-1 text-sm mb-3">
-                      <p className="text-gray-600">
-                        {machine.machine_type} - {machine.model_name}
-                      </p>
-                      {machine.customer_name && (
-                        <p className="flex items-center gap-1 text-gray-600">
-                          <Building2 size={12} />
-                          {machine.customer_name}
-                        </p>
-                      )}
-                      {machine.address && (
-                        <p className="text-gray-500 text-xs">{machine.address}</p>
-                      )}
-                    </div>
-
-                    {machine.open_issues_count > 0 && (
-                      <div className="flex items-center gap-1 text-red-600 text-sm mb-3">
-                        <AlertTriangle size={14} />
-                        {machine.open_issues_count} problematiche aperte
-                      </div>
-                    )}
-
-                    <Link
-                      to={`/machines/${machine.id}`}
-                      className="inline-flex items-center gap-1 text-primary-600 text-sm hover:underline"
-                    >
-                      Dettagli macchina
-                      <ExternalLink size={12} />
-                    </Link>
+            {visCust.map(c => (
+              <Marker key={`c-${c.id}`} position={[c.latitude, c.longitude]} icon={getCustomerIcon(c)}
+                eventHandlers={{ click: () => { setSelected(c); setSelectedType('customer'); } }}>
+                <Popup maxWidth={280}>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 font-semibold text-blue-700"><Building2 size={14}/>{c.name}</div>
+                    <p className="text-sm text-gray-500">{[c.city, c.country].filter(Boolean).join(', ')}</p>
+                    {c.address && <p className="text-xs text-gray-400">{c.address}</p>}
+                    <p className="text-sm text-gray-600">{c.machines_count} macchine · {c.open_issues_count} problemi aperti</p>
+                    {c.phone && <p className="text-xs text-gray-500">📞 {c.phone}</p>}
                   </div>
                 </Popup>
               </Marker>
@@ -179,53 +159,41 @@ function MapView() {
           </MapContainer>
         )}
 
-        {/* Selected Machine Panel */}
-        {selectedMachine && (
+        {/* Pannello dettaglio */}
+        {selected && (
           <div className="absolute bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 bg-white rounded-xl shadow-lg p-4 z-[1000]">
-            <div className="flex items-start justify-between mb-3">
+            <div className="flex items-start justify-between mb-2">
               <div>
-                <p className="font-mono font-semibold text-primary-600">
-                  {selectedMachine.numero_commessa}
-                </p>
-                <p className="text-sm text-gray-500">
-                  {selectedMachine.machine_type} - {selectedMachine.model_name}
-                </p>
+                {selectedType === 'machine' ? (
+                  <><p className="font-mono font-semibold text-primary-600">{selected.numero_commessa}</p>
+                  <p className="text-sm text-gray-500">{selected.machine_type} – {selected.model_name}</p></>
+                ) : (
+                  <><p className="font-semibold text-blue-700">{selected.name}</p>
+                  <p className="text-sm text-gray-500">{[selected.city, selected.country].filter(Boolean).join(', ')}</p></>
+                )}
               </div>
-              <button
-                onClick={() => setSelectedMachine(null)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ×
-              </button>
+              <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
             </div>
 
-            {selectedMachine.customer_name && (
-              <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                <Building2 size={14} />
-                {selectedMachine.customer_name}
-              </div>
+            {selectedType === 'machine' && selected.customer_name && (
+              <p className="text-sm text-gray-600 flex items-center gap-1 mb-1"><Building2 size={14}/>{selected.customer_name}</p>
+            )}
+            {selectedType === 'customer' && (
+              <p className="text-sm text-gray-600 mb-1">{selected.machines_count} macchine associate</p>
+            )}
+            {selected.open_issues_count > 0 && (
+              <p className="text-sm text-red-600 flex items-center gap-1 mb-2"><AlertTriangle size={14}/>{selected.open_issues_count} problematiche aperte</p>
             )}
 
-            {selectedMachine.open_issues_count > 0 && (
-              <div className="flex items-center gap-2 text-sm text-red-600 mb-3">
-                <AlertTriangle size={14} />
-                {selectedMachine.open_issues_count} problematiche aperte
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <Link
-                to={`/machines/${selectedMachine.id}`}
-                className="flex-1 text-center px-3 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700"
-              >
-                Dettagli
-              </Link>
-              <Link
-                to={`/issues/new?machine_id=${selectedMachine.id}&numero_commessa=${selectedMachine.numero_commessa}`}
-                className="flex-1 text-center px-3 py-2 border border-primary-600 text-primary-600 rounded-lg text-sm hover:bg-primary-50"
-              >
-                Nuovo Problema
-              </Link>
+            <div className="flex gap-2 mt-3">
+              {selectedType === 'machine' ? (
+                <>
+                  <Link to={`/machines/${selected.id}`} className="flex-1 text-center px-3 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700">Dettagli</Link>
+                  <Link to={`/issues/new?machine_id=${selected.id}`} className="flex-1 text-center px-3 py-2 border border-primary-600 text-primary-600 rounded-lg text-sm hover:bg-primary-50">Nuovo Problema</Link>
+                </>
+              ) : (
+                <Link to="/customers" className="flex-1 text-center px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Vedi Clienti</Link>
+              )}
             </div>
           </div>
         )}

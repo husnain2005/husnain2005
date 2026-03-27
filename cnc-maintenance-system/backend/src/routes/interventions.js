@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const interventionsController = require('../controllers/interventionsController');
 const { authenticate, authorize } = require('../middleware/auth');
-const { uploadAttachment, handleUploadError } = require('../middleware/upload');
+const { uploadAttachmentWithVideo, handleUploadError } = require('../middleware/upload');
 
 // All routes require authentication
 router.use(authenticate);
@@ -38,7 +38,7 @@ router.post('/:id/reports', authorize('admin', 'tecnico'), interventionsControll
 router.put('/:id/complete', authorize('admin', 'tecnico'), interventionsController.completeIntervention);
 
 // Upload document to intervention
-router.post('/:id/documents', authorize('admin', 'tecnico'), uploadAttachment.single('file'), async (req, res) => {
+router.post('/:id/documents', authorize('admin', 'tecnico'), uploadAttachmentWithVideo.single('file'), async (req, res) => {
   try {
     const { id } = req.params;
     const { document_type, description } = req.body;

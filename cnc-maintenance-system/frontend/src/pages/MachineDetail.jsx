@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { machinesApi, customersApi } from '../services/api';
+import AxisTypeSelect from '../components/AxisTypeSelect';
+import CustomerSelect from '../components/CustomerSelect';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useAuth } from '../context/AuthContext';
@@ -356,16 +358,11 @@ function MachineDetail() {
                 </div>
                 <div>
                   <label className="block text-sm text-gray-500 mb-1">Assi</label>
-                  <select
+                  <AxisTypeSelect
                     value={formData.axis_type}
-                    onChange={(e) => handleChange('axis_type', e.target.value)}
+                    onChange={(v) => handleChange('axis_type', v)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                  >
-                    <option value="">Seleziona tipo assi</option>
-                    <option value="SINGOLA_XZ">Singola XZ</option>
-                    <option value="DOPPIA_XZ">Doppia XZ</option>
-                    <option value="DOPPIA_CON_Y">Doppia con Y</option>
-                  </select>
+                  />
                 </div>
                 <div>
                   <label className="block text-sm text-gray-500 mb-1">Controllo</label>
@@ -516,18 +513,13 @@ function MachineDetail() {
             </h2>
 
             {editMode ? (
-              <select
+              <CustomerSelect
                 value={formData.customer_id}
-                onChange={(e) => handleChange('customer_id', e.target.value)}
+                onChange={(v) => handleChange('customer_id', v)}
+                customers={customers}
+                onCustomerAdded={(updated) => setCustomers(updated)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-              >
-                <option value="">Seleziona cliente</option>
-                {customers.map(customer => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.name}
-                  </option>
-                ))}
-              </select>
+              />
             ) : machine.customer_name ? (
               <div className="space-y-3">
                 <div>

@@ -7,7 +7,7 @@ const DISMISS_KEY = 'cnc-pwa-install-dismissed';
  * InstallPrompt - Catches the beforeinstallprompt event and shows a banner
  * prompting the user to install the app as a PWA.
  *
- * - Shows: "Installa CNC Maintenance sul tuo dispositivo"
+ * - Shows: "Installa Gestionale Macchine GIANA sul tuo dispositivo"
  * - Buttons: "Installa" and "Chiudi"
  * - Remembers dismissal preference in localStorage
  */
@@ -92,7 +92,7 @@ export default function InstallPrompt() {
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <Download className="w-5 h-5 flex-shrink-0" />
           <span className="text-xs sm:text-sm font-medium">
-            Installa CNC Maintenance sul tuo dispositivo
+            Installa Gestionale Macchine GIANA sul tuo dispositivo
           </span>
         </div>
 

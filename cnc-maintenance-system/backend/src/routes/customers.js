@@ -4,6 +4,10 @@ const customersController = require('../controllers/customersController');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditMiddleware } = require('../middleware/audit');
 
+// Map and geocoding
+router.get('/map', authenticate, customersController.getCustomersForMap);
+router.post('/:id/geocode', authenticate, authorize('admin', 'tecnico'), customersController.geocodeCustomer);
+
 // Standard CRUD routes
 router.get('/', authenticate, customersController.getCustomers);
 router.get('/:id', authenticate, customersController.getCustomer);

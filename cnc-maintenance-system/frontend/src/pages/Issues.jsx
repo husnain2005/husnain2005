@@ -98,7 +98,14 @@ function Issues() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Problematiche</h1>
-          <p className="text-gray-500">Gestione problematiche e manutenzioni</p>
+          <p className="text-gray-500">
+            Gestione problematiche e manutenzioni
+            {!loading && total > 0 && (
+              <span className="ml-2 px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                {total} totali
+              </span>
+            )}
+          </p>
         </div>
         <Link
           to="/issues/new"
@@ -112,6 +119,16 @@ function Issues() {
       {/* Search Bar */}
       <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
         <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              value={filters.search}
+              onChange={(e) => handleFilterChange('search', e.target.value)}
+              placeholder="Cerca per titolo o descrizione..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+            />
+          </div>
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input

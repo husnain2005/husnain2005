@@ -99,12 +99,14 @@ const getInterventions = async (req, res) => {
       paramIndex++;
     }
 
-    query += ` ORDER BY i.scheduled_date DESC, i.created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
+    const limitParam = paramIndex++;
+    const offsetParam = paramIndex++;
+    query += ` ORDER BY i.scheduled_date DESC, i.created_at DESC LIMIT $${limitParam} OFFSET $${offsetParam}`;
     params.push(parseInt(limit), parseInt(offset));
 
     const result = await db.query(query, params);
 
-    // Get total count
+    // Get total count — reuse same filter params (strip LIMIT/OFFSET)
     let countQuery = `
       SELECT COUNT(*) as total
       FROM interventions i
@@ -113,20 +115,38 @@ const getInterventions = async (req, res) => {
       LEFT JOIN users u ON i.assigned_to = u.id
       WHERE 1=1
     `;
-    const countParams = [];
+    const countParams = params.slice(0, params.length - 2); // Remove LIMIT and OFFSET
     let countIndex = 1;
 
     if (status) {
       countQuery += ` AND i.status = $${countIndex++}`;
-      countParams.push(status);
     }
     if (assigned_to) {
       countQuery += ` AND i.assigned_to = $${countIndex++}`;
-      countParams.push(assigned_to);
+    }
+    if (machine_id) {
+      countQuery += ` AND i.machine_id = $${countIndex++}`;
     }
     if (numero_commessa) {
       countQuery += ` AND m.numero_commessa ILIKE $${countIndex++}`;
-      countParams.push(`%${numero_commessa}%`);
+    }
+    if (customer_id) {
+      countQuery += ` AND c.id = $${countIndex++}`;
+    }
+    if (from_date) {
+      countQuery += ` AND i.scheduled_date >= $${countIndex++}`;
+    }
+    if (to_date) {
+      countQuery += ` AND i.scheduled_date <= $${countIndex++}`;
+    }
+    if (search) {
+      countQuery += ` AND (
+        m.numero_commessa ILIKE $${countIndex} OR
+        c.name ILIKE $${countIndex} OR
+        i.description ILIKE $${countIndex} OR
+        u.full_name ILIKE $${countIndex}
+      )`;
+      countIndex++;
     }
 
     const countResult = await db.query(countQuery, countParams);

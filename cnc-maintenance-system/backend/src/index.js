@@ -21,6 +21,9 @@ const interventionsRoutes = require('./routes/interventions');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// ─── Trust Proxy (nginx / Vite dev proxy) ────────────────────────────────────
+app.set('trust proxy', 1);
+
 // ─── Security Headers ────────────────────────────────────────────────────────
 app.use(helmet());
 
@@ -48,10 +51,11 @@ app.use(verifyCsrf);
 // ─── Rate Limiting for Login ─────────────────────────────────────────────────
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts
+  max: 20, // 20 attempts per window
   message: { error: 'Troppi tentativi', message: 'Troppi tentativi di login. Riprova tra 15 minuti.' },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  skip: (req) => process.env.NODE_ENV === 'development'
 });
 
 // ─── Request Logging (dev only) ──────────────────────────────────────────────

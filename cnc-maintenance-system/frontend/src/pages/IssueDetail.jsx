@@ -24,6 +24,8 @@ function IssueDetail() {
   const [uploading, setUploading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({});
+  const [saveError, setSaveError] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadIssue();
@@ -79,12 +81,17 @@ function IssueDetail() {
   };
 
   const handleSaveEdit = async () => {
+    setSaving(true);
+    setSaveError(null);
     try {
       await issuesApi.update(id, editData);
       setIssue({ ...issue, ...editData });
       setEditMode(false);
     } catch (err) {
       console.error('Failed to save:', err);
+      setSaveError(err.response?.data?.message || 'Errore durante il salvataggio');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -152,6 +159,12 @@ function IssueDetail() {
           {editMode ? (
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h2 className="text-lg font-semibold mb-4">Modifica Problematica</h2>
+              {saveError && (
+                <div className="mb-4 bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+                  <AlertTriangle size={16} />
+                  {saveError}
+                </div>
+              )}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">Titolo</label>
@@ -217,9 +230,15 @@ function IssueDetail() {
                   </button>
                   <button
                     onClick={handleSaveEdit}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                    disabled={saving}
+                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center gap-2"
                   >
-                    Salva
+                    {saving ? (
+                      <>
+                        <div className="loader w-4 h-4 border-2"></div>
+                        Salvataggio...
+                      </>
+                    ) : 'Salva'}
                   </button>
                 </div>
               </div>
@@ -265,6 +284,14 @@ function IssueDetail() {
                         alt={att.original_filename}
                         className="w-full h-24 object-cover"
                       />
+                    ) : att.mime_type?.startsWith('video/') ? (
+                      <div className="w-full h-24 bg-black flex items-center justify-center relative">
+                        <video
+                          src={`/api/attachments/${att.id}`}
+                          className="w-full h-24 object-cover"
+                          preload="metadata"
+                        />
+                      </div>
                     ) : (
                       <div className="w-full h-24 bg-gray-100 flex items-center justify-center">
                         <Paperclip size={32} className="text-gray-400" />
@@ -287,7 +314,7 @@ function IssueDetail() {
                       multiple
                       onChange={handleFileSelect}
                       className="hidden"
-                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                      accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx"
                     />
                     <div className="flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg hover:border-primary-500 hover:bg-primary-50">
                       <Upload size={18} />

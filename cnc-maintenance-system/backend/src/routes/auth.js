@@ -29,6 +29,7 @@ module.exports = (loginLimiter) => {
   router.get('/users', authenticate, authorize('admin'), authController.getUsers);
   router.post('/users', authenticate, authorize('admin'), auditMiddleware, authController.createUser);
   router.put('/users/:id', authenticate, authorize('admin'), auditMiddleware, authController.updateUser);
+  router.post('/users/:id/reset-password', authenticate, authorize('admin'), auditMiddleware, authController.resetUserPassword);
 
   return router;
 };

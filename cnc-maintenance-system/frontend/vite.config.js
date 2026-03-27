@@ -6,12 +6,13 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      devOptions: { enabled: false },
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png'],
       manifest: {
-        name: 'CNC Maintenance System',
-        short_name: 'CNC Maint',
-        description: 'Sistema di Gestione Manutenzione CNC',
+        name: 'Gestionale Macchine GIANA',
+        short_name: 'GIANA',
+        description: 'Gestionale Macchine GIANA',
         theme_color: '#3b82f6',
         background_color: '#f8fafc',
         display: 'standalone',
@@ -87,14 +88,15 @@ export default defineConfig({
     })
   ],
   server: {
+    host: '0.0.0.0',
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: process.env.API_TARGET || 'http://localhost:3001',
         changeOrigin: true
       },
       '/uploads': {
-        target: 'http://localhost:3001',
+        target: process.env.API_TARGET || 'http://localhost:3001',
         changeOrigin: true
       }
     }

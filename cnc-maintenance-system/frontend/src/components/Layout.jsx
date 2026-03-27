@@ -13,7 +13,8 @@ import {
   Menu,
   X,
   ChevronDown,
-  Calendar
+  Calendar,
+  UserCircle
 } from 'lucide-react';
 
 const navItems = [
@@ -69,7 +70,7 @@ function Layout() {
           >
             <Menu size={24} />
           </button>
-          <h1 className="font-semibold text-gray-800">CNC Maintenance</h1>
+          <h1 className="font-semibold text-gray-800">Gestionale Macchine GIANA</h1>
           <div className="w-10" />
         </div>
       </header>
@@ -92,8 +93,12 @@ function Layout() {
           {/* Logo */}
           <div className="flex items-center justify-between p-4 border-b">
             <div className="flex items-center gap-2">
-              <Wrench className="text-primary-600" size={28} />
-              <span className="font-bold text-xl text-gray-800">CNC Maint</span>
+              <img src="/icons/logo.webp" alt="GIANA" className="w-8 h-8 rounded object-cover" onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
+              <span className="hidden items-center justify-center w-8 h-8 bg-primary-600 rounded text-white font-bold text-sm">G</span>
+              <div className="leading-tight">
+                <span className="font-bold text-sm text-gray-800 block">Gestionale Macchine</span>
+                <span className="font-bold text-sm text-primary-600 block">GIANA</span>
+              </div>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -147,10 +152,19 @@ function Layout() {
               </button>
 
               {userMenuOpen && (
-                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-lg shadow-lg border">
+                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-lg shadow-lg border overflow-hidden">
+                  <NavLink
+                    to="/profile"
+                    onClick={() => { setUserMenuOpen(false); setSidebarOpen(false); }}
+                    className="w-full flex items-center gap-2 px-4 py-3 text-gray-700 hover:bg-gray-50"
+                  >
+                    <UserCircle size={18} />
+                    <span>Il mio Profilo</span>
+                  </NavLink>
+                  <div className="border-t" />
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-2 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg"
+                    className="w-full flex items-center gap-2 px-4 py-3 text-red-600 hover:bg-red-50"
                   >
                     <LogOut size={18} />
                     <span>Logout</span>

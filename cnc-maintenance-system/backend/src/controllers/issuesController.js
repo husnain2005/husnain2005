@@ -105,22 +105,70 @@ const getIssues = async (req, res) => {
       paramIndex++;
     }
 
-    query += ` ORDER BY i.created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
+    const limitParam = paramIndex++;
+    const offsetParam = paramIndex++;
+    query += ` ORDER BY i.created_at DESC LIMIT $${limitParam} OFFSET $${offsetParam}`;
     params.push(parseInt(limit), parseInt(offset));
 
     const result = await db.query(query, params);
 
-    // Get total count
+    // Get total count with same filters (excluding LIMIT/OFFSET)
     let countQuery = `
       SELECT COUNT(*) as total
       FROM issues i
+      LEFT JOIN issue_groups ig ON i.issue_group_id = ig.id
       LEFT JOIN machines m ON i.machine_id = m.id
       LEFT JOIN machine_models mm ON m.model_id = mm.id
       LEFT JOIN customers c ON m.customer_id = c.id
+      LEFT JOIN users u ON i.created_by = u.id
+      LEFT JOIN users ua ON i.assigned_to = ua.id
       WHERE 1=1
     `;
 
-    const countResult = await db.query(countQuery);
+    const countParams = params.slice(0, params.length - 2); // Remove LIMIT and OFFSET
+    let countParamIndex = 1;
+
+    if (numero_commessa) {
+      countQuery += ` AND (m.numero_commessa ILIKE $${countParamIndex} OR i.numero_commessa ILIKE $${countParamIndex})`;
+      countParamIndex++;
+    }
+    if (machine_id) {
+      countQuery += ` AND i.machine_id = $${countParamIndex++}`;
+    }
+    if (machine_type) {
+      countQuery += ` AND (mm.machine_type = $${countParamIndex} OR i.machine_type_fallback = $${countParamIndex})`;
+      countParamIndex++;
+    }
+    if (customer_name) {
+      countQuery += ` AND (c.name ILIKE $${countParamIndex} OR i.customer_fallback ILIKE $${countParamIndex})`;
+      countParamIndex++;
+    }
+    if (issue_group_id) {
+      countQuery += ` AND i.issue_group_id = $${countParamIndex++}`;
+    }
+    if (issue_type) {
+      countQuery += ` AND i.issue_type = $${countParamIndex++}`;
+    }
+    if (status) {
+      countQuery += ` AND i.status = $${countParamIndex++}`;
+    }
+    if (priority) {
+      countQuery += ` AND i.priority = $${countParamIndex++}`;
+    }
+    if (assigned_to) {
+      countQuery += ` AND i.assigned_to = $${countParamIndex++}`;
+    }
+    if (search) {
+      countQuery += ` AND (
+        i.title ILIKE $${countParamIndex} OR
+        i.description ILIKE $${countParamIndex} OR
+        m.numero_commessa ILIKE $${countParamIndex} OR
+        i.numero_commessa ILIKE $${countParamIndex}
+      )`;
+      countParamIndex++;
+    }
+
+    const countResult = await db.query(countQuery, countParams);
 
     res.json({
       issues: result.rows,
@@ -573,7 +621,9 @@ const getStats = async (req, res) => {
         (SELECT COUNT(*) FROM machines WHERE is_active = true) as total_machines,
         (SELECT COUNT(*) FROM issues) as total_issues,
         (SELECT COUNT(*) FROM issues WHERE status IN ('aperta', 'in_lavorazione')) as open_issues,
-        (SELECT COUNT(*) FROM customers WHERE is_active = true) as total_customers
+        (SELECT COUNT(*) FROM customers WHERE is_active = true) as total_customers,
+        (SELECT COUNT(*) FROM interventions WHERE status = 'programmato') as scheduled_interventions,
+        (SELECT COUNT(*) FROM interventions WHERE status = 'in_corso') as active_interventions
     `);
 
     res.json({

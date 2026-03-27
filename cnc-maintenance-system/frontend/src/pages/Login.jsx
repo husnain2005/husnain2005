@@ -31,11 +31,13 @@ function Login() {
     <div className="min-h-screen bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
-            <Wrench className="text-primary-600" size={32} />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 overflow-hidden bg-primary-100">
+            <img src="/icons/logo.webp" alt="GIANA" className="w-full h-full object-cover"
+              onError={e => { e.target.style.display='none'; e.target.parentNode.innerHTML='<span style="font-size:2rem;font-weight:900;color:#3b82f6">G</span>'; }} />
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">CNC Maintenance</h1>
-          <p className="text-gray-500 mt-2">Sistema di gestione manutenzioni</p>
+          <h1 className="text-2xl font-bold text-gray-800">Gestionale Macchine</h1>
+          <p className="text-primary-600 font-bold text-lg">GIANA</p>
+          <p className="text-gray-500 mt-1 text-sm">Sistema di gestione manutenzioni</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

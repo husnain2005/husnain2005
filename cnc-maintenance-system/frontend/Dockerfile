@@ -4,6 +4,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+# Aggiungi ARG per busting della cache quando il sorgente cambia
+ARG CACHEBUST=1
 RUN npm run build
 
 # Production stage

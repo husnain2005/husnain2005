@@ -9,7 +9,8 @@ import {
   Building2,
   ArrowRight,
   Zap,
-  Cog
+  Cog,
+  Calendar
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -89,13 +90,18 @@ function Dashboard() {
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-500 text-sm">Totale Problematiche</p>
-              <p className="text-3xl font-bold text-gray-800 mt-1">
-                {stats?.totals?.total_issues || 0}
+              <p className="text-gray-500 text-sm">Interventi Programmati</p>
+              <p className="text-3xl font-bold text-blue-600 mt-1">
+                {stats?.totals?.scheduled_interventions || 0}
               </p>
+              {stats?.totals?.active_interventions > 0 && (
+                <p className="text-xs text-yellow-600 mt-1">
+                  + {stats.totals.active_interventions} in corso
+                </p>
+              )}
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Clock className="text-blue-600" size={24} />
+              <Calendar className="text-blue-600" size={24} />
             </div>
           </div>
         </div>
@@ -238,13 +244,20 @@ function Dashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
         <Link
           to="/issues/new"
           className="bg-primary-600 text-white p-4 rounded-xl hover:bg-primary-700 transition flex items-center gap-3"
         >
           <AlertTriangle size={24} />
           <span className="font-medium">Nuova Problematica</span>
+        </Link>
+        <Link
+          to="/interventions/new"
+          className="bg-white text-gray-800 p-4 rounded-xl shadow-sm hover:shadow-md transition flex items-center gap-3"
+        >
+          <Calendar size={24} className="text-blue-600" />
+          <span className="font-medium">Nuovo Intervento</span>
         </Link>
         <Link
           to="/machines"

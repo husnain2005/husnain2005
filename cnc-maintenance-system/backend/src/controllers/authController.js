@@ -376,6 +376,49 @@ const updateUser = async (req, res) => {
   }
 };
 
+/**
+ * Reset another user's password (admin only)
+ * POST /api/auth/users/:id/reset-password
+ */
+const resetUserPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({
+        error: 'Password non valida',
+        message: 'La password deve essere di almeno 8 caratteri'
+      });
+    }
+
+    const current = await db.query('SELECT id, username FROM users WHERE id = $1', [id]);
+    if (current.rows.length === 0) {
+      return res.status(404).json({ error: 'Non trovato', message: 'Utente non trovato' });
+    }
+
+    const hash = await bcrypt.hash(newPassword, 12);
+    await db.query(
+      'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [hash, id]
+    );
+
+    await req.audit('users', parseInt(id), 'UPDATE', null, {
+      password_reset: true,
+      reset_by: req.user.username
+    });
+
+    res.json({ message: 'Password resettata con successo' });
+
+  } catch (error) {
+    console.error('Reset user password error:', error);
+    res.status(500).json({
+      error: 'Errore interno',
+      message: 'Errore durante il reset della password'
+    });
+  }
+};
+
 module.exports = {
   login,
   logout,
@@ -383,5 +426,6 @@ module.exports = {
   changePassword,
   getUsers,
   createUser,
-  updateUser
+  updateUser,
+  resetUserPassword
 };

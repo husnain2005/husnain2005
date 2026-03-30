@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guida Hosting Gestionale - Giuseppe Giana</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #fff;
+        }
+        h1 {
+            color: #1a365d;
+            font-size: 28px;
+            margin-bottom: 5px;
+            border-bottom: 3px solid #3182ce;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2c5282;
+            font-size: 20px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            background: #ebf8ff;
+            padding: 10px 15px;
+            border-left: 4px solid #3182ce;
+        }
+        h3 {
+            color: #2d3748;
+            font-size: 16px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        p {
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #718096;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        th, td {
+            border: 1px solid #e2e8f0;
+            padding: 10px 12px;
+            text-align: left;
+        }
+        th {
+            background: #edf2f7;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        tr:nth-child(even) {
+            background: #f7fafc;
+        }
+        .highlight {
+            background: #c6f6d5;
+            font-weight: bold;
+        }
+        ol, ul {
+            margin: 10px 0 15px 25px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        code {
+            background: #edf2f7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+        }
+        pre {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-size: 13px;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+            color: #e2e8f0;
+        }
+        .cost-box {
+            background: #f0fff4;
+            border: 2px solid #48bb78;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .cost-box h3 {
+            color: #276749;
+            margin-top: 0;
+        }
+        .warning {
+            background: #fffaf0;
+            border-left: 4px solid #ed8936;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .info {
+            background: #ebf8ff;
+            border-left: 4px solid #3182ce;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #e2e8f0;
+            margin: 25px 0;
+        }
+        .checklist {
+            list-style: none;
+            margin-left: 0;
+        }
+        .checklist li {
+            padding-left: 30px;
+            position: relative;
+        }
+        .checklist li:before {
+            content: "[ ]";
+            position: absolute;
+            left: 0;
+            font-family: monospace;
+        }
+        .step-time {
+            color: #718096;
+            font-style: italic;
+            margin-top: 10px;
+        }
+        .total {
+            font-size: 18px;
+            font-weight: bold;
+            color: #276749;
+        }
+        @media print {
+            body {
+                padding: 20px;
+            }
+            h2 {
+                break-after: avoid;
+            }
+            table, pre {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<h1>Guida Completa: Hosting Gestionale Aziendale</h1>
+<p class="subtitle">Giuseppe Giana - Setup Hetzner + Coolify</p>
+
+<hr>
+
+<div class="cost-box">
+<h3>RIEPILOGO COSTI</h3>
+<table>
+    <tr>
+        <th>Voce</th>
+        <th>Costo</th>
+        <th>Frequenza</th>
+    </tr>
+    <tr>
+        <td>Server Hetzner CX22</td>
+        <td>4,85 EUR</td>
+        <td>/mese</td>
+    </tr>
+    <tr>
+        <td>Backup automatici</td>
+        <td>1,20 EUR</td>
+        <td>/mese</td>
+    </tr>
+    <tr>
+        <td>Dominio .it</td>
+        <td>~10-12 EUR</td>
+        <td>/anno</td>
+    </tr>
+    <tr>
+        <td>Dominio .com</td>
+        <td>~9-10 EUR</td>
+        <td>/anno</td>
+    </tr>
+    <tr>
+        <td>Coolify</td>
+        <td class="highlight">GRATIS</td>
+        <td>-</td>
+    </tr>
+    <tr>
+        <td>PostgreSQL</td>
+        <td class="highlight">GRATIS (incluso)</td>
+        <td>-</td>
+    </tr>
+    <tr>
+        <td>SSL/HTTPS</td>
+        <td class="highlight">GRATIS (incluso)</td>
+        <td>-</td>
+    </tr>
+</table>
+<p class="total">TOTALE: ~7-8 EUR/mese + ~10 EUR/anno per dominio</p>
+</div>
+
+<hr>
+
+<h2>PASSO 1: Creare Account Hetzner</h2>
+<ol>
+    <li>Vai su: <code>https://www.hetzner.com/cloud</code></li>
+    <li>Clicca <strong>"Sign Up"</strong> o <strong>"Register"</strong></li>
+    <li>Inserisci:
+        <ul>
+            <li>Email aziendale</li>
+            <li>Password sicura</li>
+        </ul>
+    </li>
+    <li>Conferma l'email ricevuta</li>
+    <li>Inserisci i dati di fatturazione (carta di credito o PayPal)</li>
+</ol>
+<p class="step-time">Tempo: 5 minuti</p>
+
+<hr>
+
+<h2>PASSO 2: Creare il Server</h2>
+<ol>
+    <li>Accedi a Hetzner Cloud Console: <code>https://console.hetzner.cloud</code></li>
+    <li>Clicca <strong>"+ Create Server"</strong></li>
+    <li><strong>Seleziona Location (posizione server):</strong>
+        <ul>
+            <li>Consigliato: <strong>Falkenstein</strong> o <strong>Nuremberg</strong> (Germania, vicino all'Italia)</li>
+            <li>Alternativa: <strong>Helsinki</strong> (Finlandia)</li>
+        </ul>
+    </li>
+    <li><strong>Seleziona Image (sistema operativo):</strong>
+        <ul>
+            <li>Scegli: <strong>Ubuntu 24.04</strong></li>
+        </ul>
+    </li>
+    <li><strong>Seleziona Type (tipo server):</strong>
+        <ul>
+            <li>Scegli: <strong>CX22</strong> (Shared vCPU, x86)</li>
+            <li>Specifiche: 2 vCPU, 4 GB RAM, 40 GB SSD</li>
+            <li>Costo: <strong>4,85 EUR/mese</strong></li>
+        </ul>
+    </li>
+    <li><strong>Networking:</strong>
+        <ul>
+            <li>Lascia le impostazioni predefinite</li>
+            <li>IPv4 e IPv6 saranno assegnati automaticamente</li>
+        </ul>
+    </li>
+    <li><strong>SSH Keys (opzionale ma consigliato):</strong>
+        <ul>
+            <li>Se hai una chiave SSH, aggiungila qui</li>
+            <li>Altrimenti, riceverai la password root via email</li>
+        </ul>
+    </li>
+    <li><strong>Backups:</strong>
+        <ul>
+            <li><strong>ATTIVA questa opzione!</strong> (importante per dati aziendali)</li>
+            <li>Costo aggiuntivo: 1,20 EUR/mese (20% del costo server)</li>
+        </ul>
+    </li>
+    <li><strong>Name:</strong>
+        <ul>
+            <li>Dai un nome al server, es: <code>gestionale-giana</code></li>
+        </ul>
+    </li>
+    <li>Clicca <strong>"Create & Buy Now"</strong></li>
+</ol>
+<p class="step-time">Tempo: 5 minuti | Costo: 4,85 + 1,20 = 6,05 EUR/mese</p>
+
+<hr>
+
+<h2>PASSO 3: Annotare l'Indirizzo IP</h2>
+<ol>
+    <li>Dopo la creazione, il server appare nella lista</li>
+    <li>Copia l'<strong>indirizzo IP</strong> (es: <code>168.119.xxx.xxx</code>)</li>
+    <li>Salvalo, ti servira per:
+        <ul>
+            <li>Collegarti al server</li>
+            <li>Configurare il dominio</li>
+        </ul>
+    </li>
+</ol>
+
+<hr>
+
+<h2>PASSO 4: Collegarsi al Server</h2>
+
+<h3>Da Windows:</h3>
+<ol>
+    <li>Scarica <strong>PuTTY</strong>: <code>https://www.putty.org/</code></li>
+    <li>Apri PuTTY</li>
+    <li>In "Host Name" inserisci l'IP del server</li>
+    <li>Clicca <strong>"Open"</strong></li>
+    <li>Username: <code>root</code></li>
+    <li>Password: quella ricevuta via email (o la tua chiave SSH)</li>
+</ol>
+
+<h3>Da Mac/Linux:</h3>
+<ol>
+    <li>Apri il Terminale</li>
+    <li>Scrivi:</li>
+</ol>
+<pre><code>ssh root@TUO_INDIRIZZO_IP</code></pre>
+<ol start="3">
+    <li>Inserisci la password</li>
+</ol>
+<p class="step-time">Tempo: 2 minuti</p>
+
+<hr>
+
+<h2>PASSO 5: Installare Coolify</h2>
+<p>Una volta collegato al server, esegui questi comandi:</p>
+
+<h3>5.1 Aggiornare il sistema:</h3>
+<pre><code>apt update && apt upgrade -y</code></pre>
+<p>Attendi 1-2 minuti.</p>
+
+<h3>5.2 Installare Coolify:</h3>
+<pre><code>curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash</code></pre>
+<p>Attendi 3-5 minuti. Vedrai molto testo scorrere, e' normale.</p>
+
+<h3>5.3 Al termine vedrai:</h3>
+<pre><code>Coolify installed successfully!
+Access it at: http://TUO_IP:8000</code></pre>
+<p class="step-time">Tempo: 10 minuti</p>
+
+<hr>
+
+<h2>PASSO 6: Configurare Coolify</h2>
+<ol>
+    <li>Apri il browser</li>
+    <li>Vai su: <code>http://TUO_IP:8000</code></li>
+    <li>Crea l'account amministratore:
+        <ul>
+            <li>Email</li>
+            <li>Password (FORTE! Min 12 caratteri)</li>
+        </ul>
+    </li>
+    <li>Segui il wizard di configurazione iniziale</li>
+    <li>Coolify e' pronto!</li>
+</ol>
+<p class="step-time">Tempo: 5 minuti</p>
+
+<hr>
+
+<h2>PASSO 7: Installare PostgreSQL</h2>
+<ol>
+    <li>Nel pannello Coolify, vai su <strong>"Resources"</strong></li>
+    <li>Clicca <strong>"+ New"</strong></li>
+    <li>Seleziona <strong>"Database"</strong></li>
+    <li>Scegli <strong>"PostgreSQL"</strong></li>
+    <li>Configura:
+        <ul>
+            <li>Name: <code>gestionale-db</code></li>
+            <li>Database Name: <code>gestionale</code></li>
+            <li>Username: <code>giana_admin</code> (esempio)</li>
+            <li>Password: <strong>genera una password forte</strong></li>
+        </ul>
+    </li>
+    <li>Clicca <strong>"Start"</strong></li>
+</ol>
+<div class="warning">
+    <strong>Salva queste credenziali!</strong> Ti serviranno per collegare l'applicazione.
+</div>
+<p class="step-time">Tempo: 5 minuti</p>
+
+<hr>
+
+<h2>PASSO 8: Comprare il Dominio (Cloudflare)</h2>
+<ol>
+    <li>Vai su: <code>https://www.cloudflare.com</code></li>
+    <li>Crea un account (gratuito)</li>
+    <li>Vai su <strong>"Domain Registration"</strong> > <strong>"Register Domains"</strong></li>
+    <li>Cerca il dominio desiderato:
+        <ul>
+            <li>Es: <code>giuseppegiana.it</code> o <code>gestionegiana.it</code></li>
+        </ul>
+    </li>
+    <li>Aggiungi al carrello e completa l'acquisto</li>
+</ol>
+<p><strong>Costo dominio .it: ~10-12 EUR/anno</strong><br>
+<strong>Costo dominio .com: ~9-10 EUR/anno</strong></p>
+<p class="step-time">Tempo: 10 minuti</p>
+
+<hr>
+
+<h2>PASSO 9: Collegare il Dominio al Server</h2>
+
+<h3>In Cloudflare:</h3>
+<ol>
+    <li>Vai su <strong>"DNS"</strong> per il tuo dominio</li>
+    <li>Clicca <strong>"+ Add Record"</strong></li>
+    <li>Aggiungi questi record:</li>
+</ol>
+
+<table>
+    <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Content</th>
+        <th>Proxy</th>
+    </tr>
+    <tr>
+        <td>A</td>
+        <td>@</td>
+        <td>TUO_IP_SERVER</td>
+        <td>OFF (DNS only)</td>
+    </tr>
+    <tr>
+        <td>A</td>
+        <td>www</td>
+        <td>TUO_IP_SERVER</td>
+        <td>OFF (DNS only)</td>
+    </tr>
+    <tr>
+        <td>A</td>
+        <td>gestionale</td>
+        <td>TUO_IP_SERVER</td>
+        <td>OFF (DNS only)</td>
+    </tr>
+</table>
+
+<ol start="4">
+    <li>Salva</li>
+</ol>
+<div class="info">
+    <strong>Nota:</strong> Disattiva il proxy (nuvola arancione) inizialmente. Potrai attivarlo dopo.
+</div>
+<p class="step-time">Tempo: 5 minuti | Propagazione DNS: fino a 24 ore (di solito 10-30 minuti)</p>
+
+<hr>
+
+<h2>PASSO 10: Configurare SSL (HTTPS) in Coolify</h2>
+<ol>
+    <li>In Coolify, vai su <strong>"Settings"</strong> > <strong>"SSL"</strong></li>
+    <li>Abilita <strong>"Let's Encrypt"</strong></li>
+    <li>Inserisci un'email per le notifiche SSL</li>
+    <li>Salva</li>
+</ol>
+<p>Ora il tuo sito avra il lucchetto verde (HTTPS).</p>
+<p class="step-time">Tempo: 5 minuti</p>
+
+<hr>
+
+<h2>PASSO 11: Deploy della tua Applicazione</h2>
+<ol>
+    <li>In Coolify, vai su <strong>"Resources"</strong> > <strong>"+ New"</strong></li>
+    <li>Seleziona <strong>"Application"</strong></li>
+    <li>Scegli la fonte:
+        <ul>
+            <li><strong>GitHub</strong>: collega il tuo repository</li>
+            <li><strong>GitLab</strong>: collega il tuo repository</li>
+            <li><strong>Docker</strong>: se hai un'immagine Docker</li>
+        </ul>
+    </li>
+    <li>Configura:
+        <ul>
+            <li>Branch: <code>main</code> o <code>master</code></li>
+            <li>Build command (se necessario)</li>
+            <li>Port dell'applicazione</li>
+        </ul>
+    </li>
+    <li>Aggiungi le <strong>variabili d'ambiente</strong>:</li>
+</ol>
+<pre><code>DATABASE_URL=postgresql://giana_admin:PASSWORD@localhost:5432/gestionale</code></pre>
+<ol start="6">
+    <li>Clicca <strong>"Deploy"</strong></li>
+</ol>
+<p class="step-time">Tempo: 10-20 minuti (dipende dall'applicazione)</p>
+
+<hr>
+
+<h2>PASSO 12: Configurare il Dominio nell'Applicazione</h2>
+<ol>
+    <li>In Coolify, vai sull'applicazione deployata</li>
+    <li>Vai su <strong>"Settings"</strong> > <strong>"Domains"</strong></li>
+    <li>Aggiungi:
+        <ul>
+            <li><code>gestionale.tuodominio.it</code></li>
+            <li>oppure <code>www.tuodominio.it</code></li>
+        </ul>
+    </li>
+    <li>Abilita <strong>"Generate SSL"</strong></li>
+    <li>Salva</li>
+</ol>
+<p class="step-time">Tempo: 5 minuti</p>
+
+<hr>
+
+<div class="cost-box">
+<h2 style="margin-top:0; background:none; border:none; padding:0;">RIEPILOGO FINALE COSTI</h2>
+
+<h3>Costi Mensili:</h3>
+<table>
+    <tr>
+        <th>Voce</th>
+        <th>Costo</th>
+    </tr>
+    <tr>
+        <td>Server Hetzner CX22</td>
+        <td>4,85 EUR</td>
+    </tr>
+    <tr>
+        <td>Backup automatici</td>
+        <td>1,20 EUR</td>
+    </tr>
+    <tr class="highlight">
+        <td><strong>TOTALE MENSILE</strong></td>
+        <td><strong>6,05 EUR</strong></td>
+    </tr>
+</table>
+
+<h3>Costi Annuali:</h3>
+<table>
+    <tr>
+        <th>Voce</th>
+        <th>Costo</th>
+    </tr>
+    <tr>
+        <td>Costi mensili x 12</td>
+        <td>72,60 EUR</td>
+    </tr>
+    <tr>
+        <td>Dominio .it</td>
+        <td>~10 EUR</td>
+    </tr>
+    <tr class="highlight">
+        <td><strong>TOTALE ANNUALE</strong></td>
+        <td><strong>~83 EUR</strong></td>
+    </tr>
+</table>
+
+<h3>Gratuito (incluso):</h3>
+<ul>
+    <li>Coolify (pannello di gestione)</li>
+    <li>PostgreSQL (database)</li>
+    <li>SSL/HTTPS (certificato)</li>
+    <li>Backup giornalieri (con opzione attivata)</li>
+    <li>Banda illimitata (20 TB inclusi)</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>MANUTENZIONE MENSILE</h2>
+
+<h3>Ogni mese (5 minuti):</h3>
+<ol>
+    <li>Accedi a Coolify</li>
+    <li>Controlla che tutto funzioni</li>
+    <li>Verifica i backup</li>
+</ol>
+
+<h3>Ogni 3 mesi (15 minuti):</h3>
+<ol>
+    <li>Collegati al server via SSH</li>
+    <li>Aggiorna il sistema:</li>
+</ol>
+<pre><code>apt update && apt upgrade -y</code></pre>
+<ol start="3">
+    <li>Aggiorna Coolify (se disponibile)</li>
+</ol>
+
+<hr>
+
+<h2>SUPPORTO E RISORSE</h2>
+<ul>
+    <li><strong>Hetzner Docs</strong>: https://docs.hetzner.com</li>
+    <li><strong>Coolify Docs</strong>: https://coolify.io/docs</li>
+    <li><strong>Coolify Discord</strong>: https://discord.gg/coolify</li>
+    <li><strong>Cloudflare Docs</strong>: https://developers.cloudflare.com</li>
+</ul>
+
+<hr>
+
+<h2>CHECKLIST FINALE</h2>
+<ul class="checklist">
+    <li>Account Hetzner creato</li>
+    <li>Server CX22 creato con Ubuntu 24.04</li>
+    <li>Backup attivati</li>
+    <li>IP del server annotato</li>
+    <li>Coolify installato</li>
+    <li>PostgreSQL configurato</li>
+    <li>Dominio acquistato su Cloudflare</li>
+    <li>DNS configurato</li>
+    <li>SSL attivato</li>
+    <li>Applicazione deployata</li>
+    <li>Dominio collegato all'applicazione</li>
+    <li>Test accesso da rete esterna</li>
+    <li>Credenziali salvate in posto sicuro</li>
+</ul>
+
+<hr>
+
+<h2>NOTE DI SICUREZZA</h2>
+<ol>
+    <li><strong>Password</strong>: Usa password di almeno 16 caratteri con maiuscole, minuscole, numeri e simboli</li>
+    <li><strong>Backup</strong>: Verifica periodicamente che i backup funzionino</li>
+    <li><strong>Accesso</strong>: Limita chi ha accesso al pannello Coolify</li>
+    <li><strong>Aggiornamenti</strong>: Mantieni il sistema aggiornato</li>
+    <li><strong>Firewall</strong>: Coolify configura automaticamente il firewall base</li>
+</ol>
+
+<hr>
+
+<p style="text-align: center; color: #718096; margin-top: 40px;">
+    Documento creato per Giuseppe Giana S.r.l.<br>
+    Data: Marzo 2026
+</p>
+
+</body>
+</html>

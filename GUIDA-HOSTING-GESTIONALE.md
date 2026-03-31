@@ -293,6 +293,132 @@ apt update && apt upgrade -y
 
 ---
 
+## GESTIONE DEI DATI NEL LUNGO PERIODO
+
+### Quanto crescono i dati nel tempo
+
+| Tipo di dato | Crescita stimata | Dopo 5 anni |
+|---|---|---|
+| Database (macchine, clienti, interventi, problematiche...) | ~50 MB/anno | ~250 MB |
+| **File allegati (foto, PDF, video)** | **~10-20 GB/anno** | **~50-100 GB** |
+
+**Il database non è mai un problema** — PostgreSQL gestisce terabyte senza difficoltà.
+Il problema reale sono i **file allegati** che crescono continuamente.
+
+---
+
+### Il problema: tutto sul disco del server
+
+Con la configurazione base, foto e PDF vengono salvati sul disco del server Hetzner (40 GB).
+Dopo qualche anno di utilizzo intenso, il disco si riempie.
+
+```
+Configurazione base (LIMITI):
+  Hetzner CX22 — disco 40 GB
+  ├── sistema operativo + Docker   ~5 GB
+  ├── database PostgreSQL          ~1 GB
+  └── /uploads (foto, PDF...)      cresce ogni anno → disco pieno
+```
+
+---
+
+### La soluzione: Object Storage
+
+Invece di salvare i file sul disco del server, si usano servizi di **Object Storage** —
+uno spazio di archiviazione separato, praticamente infinito e molto economico.
+
+```
+Configurazione scalabile (CONSIGLIATA):
+  Hetzner CX22 — disco 40 GB
+  ├── sistema operativo + Docker   ~5 GB
+  └── database PostgreSQL          ~1 GB  ← non cresce mai troppo
+
+  Hetzner Object Storage (separato)
+  └── tutti i file allegati        ← cresce quanto serve, paghi solo quello che usi
+```
+
+#### Opzione 1 — Hetzner Object Storage (consigliato)
+- Stesso provider del server, nessuna latenza
+- **Prezzo: ~0,019 EUR/GB/mese**
+- 100 GB di foto e PDF = **~1,90 EUR/mese**
+- API compatibile con Amazon S3 (standard del settore)
+- Attivabile direttamente dalla console Hetzner
+
+#### Opzione 2 — Backblaze B2
+- Ancora più economico
+- **Prezzo: ~0,006 EUR/GB/mese**
+- 100 GB = **~0,60 EUR/mese**
+- Ottimo se si vuole risparmiare al massimo
+
+---
+
+### Quando attivare l'Object Storage
+
+Non serve subito. Attivalo quando:
+- Il disco del server supera il **70% di utilizzo**
+- I file allegati superano i **20 GB**
+
+Per controllare lo spazio usato, collegati al server e scrivi:
+```bash
+df -h
+```
+
+---
+
+### Backup off-server (protezione totale)
+
+**Errore comune:** tenere i backup sullo stesso server.
+Se il server si rompe fisicamente → perdi anche i backup.
+
+La soluzione è inviare i backup automaticamente su uno spazio **separato** dal server:
+
+```
+Ogni notte (automatico):
+  Server Hetzner
+       ↓  pg_dump + zip
+  Backup ZIP
+       ↓  upload automatico
+  Object Storage separato (Hetzner o Backblaze)
+  └── ultimi 30 giorni di backup conservati
+       ↓
+  Costo: pochi centesimi al mese
+```
+
+#### Come attivare i backup off-server su Hetzner
+
+1. Nella console Hetzner, vai su **"Object Storage"**
+2. Clicca **"Create Bucket"**
+3. Dai un nome al bucket, es: `giana-backups`
+4. Scegli la stessa location del server
+5. Genera le **Access Keys** (S3 Key + Secret)
+6. Aggiungi queste variabili al file `.env` del gestionale:
+   ```
+   S3_ENDPOINT=https://fsn1.your-objectstorage.com
+   S3_BUCKET=giana-backups
+   S3_ACCESS_KEY=la_tua_access_key
+   S3_SECRET_KEY=la_tua_secret_key
+   S3_REGION=eu-central
+   ```
+7. Il sistema invierà automaticamente ogni backup notturno su questo bucket
+
+**Costo stimato backup:** con 30 giorni di backup da ~50 MB l'uno = ~1,5 GB = **meno di 0,03 EUR/mese**
+
+---
+
+### Riepilogo costi aggiornato con scalabilità
+
+| Voce | Costo | Quando |
+|---|---|---|
+| Server Hetzner CX22 | 4,85 EUR/mese | Sempre |
+| Backup automatici Hetzner | 1,20 EUR/mese | Sempre |
+| Dominio .it | ~10 EUR/anno | Sempre |
+| Object Storage file allegati | ~1-2 EUR/mese | Dopo 2-3 anni |
+| Backup off-server | ~0,03 EUR/mese | Consigliato subito |
+| **TOTALE (da subito)** | **~6,10 EUR/mese** | |
+| **TOTALE (dopo 3 anni)** | **~8-9 EUR/mese** | |
+
+---
+
 ## SUPPORTO E RISORSE
 
 - **Hetzner Docs**: https://docs.hetzner.com
@@ -317,6 +443,9 @@ apt update && apt upgrade -y
 - [ ] Dominio collegato all'applicazione
 - [ ] Test accesso da rete esterna
 - [ ] Credenziali salvate in posto sicuro
+- [ ] Bucket Object Storage creato per backup off-server
+- [ ] Variabili S3 configurate nel .env
+- [ ] Primo backup off-server verificato
 
 ---
 

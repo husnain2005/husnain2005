@@ -30,3 +30,17 @@ backend/uploads/
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+
+# Local database files
+*.db
+*.sqlite
+local_db/
+database_backup.sql
+
+# Temporary files
+tmp/
+temp/
+*.tmp

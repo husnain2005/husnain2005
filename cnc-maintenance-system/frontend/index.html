@@ -7,7 +7,7 @@
     <title>Gestionale Macchine GIANA</title>
 
     <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#3b82f6" />
+    <meta name="theme-color" content="#1e3a5f" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="GIANA" />
@@ -16,19 +16,268 @@
     <!-- Apple Touch Icon -->
     <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
 
-    <!-- Web App Manifest (VitePWA handles injection, but added for safety) -->
+    <!-- Web App Manifest -->
     <link rel="manifest" href="/manifest.webmanifest" />
+
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: linear-gradient(135deg, #0f2443 0%, #1e3a5f 40%, #0d1f38 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        transition: opacity 0.6s ease, transform 0.6s ease;
+        overflow: hidden;
+      }
+
+      #splash.fade-out {
+        opacity: 0;
+        transform: scale(1.04);
+        pointer-events: none;
+      }
+
+      /* Sfondo con pattern di griglia sottile */
+      #splash::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(59,130,246,0.07) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(59,130,246,0.07) 1px, transparent 1px);
+        background-size: 40px 40px;
+        pointer-events: none;
+      }
+
+      /* Cerchi decorativi */
+      #splash::after {
+        content: '';
+        position: absolute;
+        width: 600px;
+        height: 600px;
+        border-radius: 50%;
+        border: 1px solid rgba(59,130,246,0.12);
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        box-shadow:
+          0 0 0 80px rgba(59,130,246,0.04),
+          0 0 0 160px rgba(59,130,246,0.03),
+          0 0 0 240px rgba(59,130,246,0.02);
+        pointer-events: none;
+      }
+
+      .splash-logo-wrap {
+        position: relative;
+        width: 120px;
+        height: 120px;
+        margin-bottom: 32px;
+      }
+
+      /* Anello rotante esterno */
+      .splash-ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        border-top-color: #3b82f6;
+        border-right-color: rgba(59,130,246,0.3);
+        animation: spin 1.4s linear infinite;
+      }
+
+      .splash-ring-inner {
+        position: absolute;
+        inset: 12px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        border-bottom-color: #60a5fa;
+        border-left-color: rgba(96,165,250,0.3);
+        animation: spin 1s linear infinite reverse;
+      }
+
+      /* Cerchio sfondo logo */
+      .splash-logo-bg {
+        position: absolute;
+        inset: 20px;
+        border-radius: 50%;
+        background: rgba(59,130,246,0.15);
+        border: 1px solid rgba(59,130,246,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* SVG ingranaggio */
+      .splash-gear {
+        width: 44px;
+        height: 44px;
+        animation: gear-pulse 2s ease-in-out infinite;
+      }
+
+      @keyframes gear-pulse {
+        0%, 100% { opacity: 0.9; transform: scale(1); }
+        50%       { opacity: 1;   transform: scale(1.06); }
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      .splash-title {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        font-size: 42px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        color: #ffffff;
+        text-shadow: 0 0 40px rgba(59,130,246,0.5);
+        animation: title-in 0.6s ease both;
+      }
+
+      .splash-subtitle {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        font-size: 13px;
+        font-weight: 400;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: rgba(148,163,184,0.8);
+        margin-top: 6px;
+        margin-bottom: 48px;
+        animation: title-in 0.6s 0.1s ease both;
+      }
+
+      @keyframes title-in {
+        from { opacity: 0; transform: translateY(12px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      /* Barra di progresso */
+      .splash-progress-track {
+        width: 240px;
+        height: 3px;
+        background: rgba(255,255,255,0.08);
+        border-radius: 99px;
+        overflow: hidden;
+        margin-bottom: 20px;
+      }
+
+      .splash-progress-bar {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #3b82f6, #60a5fa);
+        border-radius: 99px;
+        transition: width 0.4s ease;
+        box-shadow: 0 0 12px rgba(59,130,246,0.8);
+      }
+
+      /* Testo status */
+      .splash-status {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        font-size: 12px;
+        color: rgba(148,163,184,0.7);
+        letter-spacing: 0.05em;
+        height: 18px;
+        transition: opacity 0.3s ease;
+      }
+
+      /* Copyright footer */
+      .splash-footer {
+        position: absolute;
+        bottom: 28px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        font-size: 11px;
+        color: rgba(100,116,139,0.5);
+        letter-spacing: 0.05em;
+      }
+    </style>
   </head>
   <body>
+    <!-- Splash screen (visibile subito, prima che React si carichi) -->
+    <div id="splash">
+      <div class="splash-logo-wrap">
+        <div class="splash-ring"></div>
+        <div class="splash-ring-inner"></div>
+        <div class="splash-logo-bg">
+          <!-- Ingranaggio SVG inline -->
+          <svg class="splash-gear" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="#60a5fa"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="splash-title">GIANA</div>
+      <div class="splash-subtitle">Gestionale Macchine CNC</div>
+
+      <div class="splash-progress-track">
+        <div class="splash-progress-bar" id="splash-bar"></div>
+      </div>
+      <div class="splash-status" id="splash-msg">Inizializzazione...</div>
+
+      <div class="splash-footer">Giuseppe Giana S.r.l. &mdash; Sistema di Manutenzione</div>
+    </div>
+
     <div id="root"></div>
+
     <script>
-      // Rimuove automaticamente i vecchi Service Worker ad ogni caricamento
+      // Rimuove SW e svuota tutte le cache ad ogni caricamento in dev
+      // In produzione (nginx) questo blocco non gira perché Vite non inietta /@react-refresh
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(regs => {
           regs.forEach(r => r.unregister());
         });
       }
+      if ('caches' in window) {
+        caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+      }
+
+      const bar = document.getElementById('splash-bar');
+      const msg = document.getElementById('splash-msg');
+
+      function setMsg(text) {
+        msg.style.opacity = '0';
+        setTimeout(() => { msg.textContent = text; msg.style.opacity = '1'; }, 150);
+      }
+
+      // ── Animazione progressiva (puramente visiva, nessun polling) ──────────
+      const steps = [
+        { pct: 20,  delay: 0,    text: 'Caricamento interfaccia...' },
+        { pct: 45,  delay: 600,  text: 'Connessione al server...'   },
+        { pct: 70,  delay: 1200, text: 'Verifica sessione...'       },
+        { pct: 88,  delay: 1800, text: 'Caricamento dati...'        },
+      ];
+
+      steps.forEach(s => {
+        setTimeout(() => {
+          bar.style.width = s.pct + '%';
+          setMsg(s.text);
+        }, s.delay);
+      });
+
+      // ── Timeout di sicurezza: nasconde la splash dopo 15s comunque ─────────
+      const safetyTimeout = setTimeout(() => {
+        if (document.getElementById('splash')) hideSplash();
+      }, 15000);
+
+      // ── Chiamata da React (AuthContext) quando l'app è pronta ─────────────
+      window.hideSplash = function hideSplash() {
+        clearTimeout(safetyTimeout);
+        bar.style.width = '100%';
+        setMsg('Pronto!');
+        setTimeout(() => {
+          const splash = document.getElementById('splash');
+          if (splash) {
+            splash.classList.add('fade-out');
+            setTimeout(() => splash.remove(), 700);
+          }
+        }, 350);
+      };
     </script>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

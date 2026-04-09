@@ -10,10 +10,46 @@ import {
   ArrowRight,
   Zap,
   Cog,
-  Calendar
+  Calendar,
+  TrendingUp,
+  BarChart2,
+  Settings2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
+
+// Colori per i gruppi (cycling)
+const GROUP_COLORS = [
+  { bg: 'bg-blue-500', light: 'bg-blue-100', text: 'text-blue-700' },
+  { bg: 'bg-purple-500', light: 'bg-purple-100', text: 'text-purple-700' },
+  { bg: 'bg-orange-500', light: 'bg-orange-100', text: 'text-orange-700' },
+  { bg: 'bg-green-500', light: 'bg-green-100', text: 'text-green-700' },
+  { bg: 'bg-red-500', light: 'bg-red-100', text: 'text-red-700' },
+  { bg: 'bg-yellow-500', light: 'bg-yellow-100', text: 'text-yellow-700' },
+  { bg: 'bg-pink-500', light: 'bg-pink-100', text: 'text-pink-700' },
+  { bg: 'bg-indigo-500', light: 'bg-indigo-100', text: 'text-indigo-700' },
+  { bg: 'bg-teal-500', light: 'bg-teal-100', text: 'text-teal-700' },
+  { bg: 'bg-cyan-500', light: 'bg-cyan-100', text: 'text-cyan-700' },
+  { bg: 'bg-lime-500', light: 'bg-lime-100', text: 'text-lime-700' },
+];
+
+const PRIORITY_CONFIG = {
+  critica:  { color: 'bg-red-500',    light: 'bg-red-50',    text: 'text-red-700',    label: 'Critica' },
+  alta:     { color: 'bg-orange-500', light: 'bg-orange-50', text: 'text-orange-700', label: 'Alta' },
+  media:    { color: 'bg-yellow-500', light: 'bg-yellow-50', text: 'text-yellow-700', label: 'Media' },
+  bassa:    { color: 'bg-green-500',  light: 'bg-green-50',  text: 'text-green-700',  label: 'Bassa' },
+};
+
+function PercentBar({ percent, colorClass }) {
+  return (
+    <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+      <div
+        className={`h-2.5 rounded-full transition-all duration-700 ${colorClass}`}
+        style={{ width: `${Math.max(percent, 0.5)}%` }}
+      />
+    </div>
+  );
+}
 
 function Dashboard() {
   const [stats, setStats] = useState(null);
@@ -34,13 +70,22 @@ function Dashboard() {
     }
   };
 
-  const getStatusCount = (status) => {
-    return stats?.statusStats?.find(s => s.status === status)?.count || 0;
-  };
+  const getStatusCount = (status) =>
+    parseInt(stats?.statusStats?.find(s => s.status === status)?.count || 0);
 
-  const getTypeCount = (type) => {
-    return stats?.typeStats?.find(t => t.issue_type === type)?.count || 0;
-  };
+  const getTypeCount = (type) =>
+    parseInt(stats?.typeStats?.find(t => t.issue_type === type)?.count || 0);
+
+  const totalIssues = parseInt(stats?.totals?.total_issues || 0);
+
+  // Calcola percentuale
+  const pct = (count) =>
+    totalIssues > 0 ? Math.round((parseInt(count) / totalIssues) * 100) : 0;
+
+  // Trend: valore massimo del mese per scalare le barre
+  const maxMonthly = stats?.monthlyTrend?.length
+    ? Math.max(...stats.monthlyTrend.map(m => parseInt(m.count)))
+    : 1;
 
   if (loading) {
     return (
@@ -51,14 +96,14 @@ function Dashboard() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
+    <div className="p-6 space-y-6">
+      <div>
         <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
         <p className="text-gray-500">Panoramica del sistema di manutenzione CNC</p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* ── Stat Cards ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -80,6 +125,7 @@ function Dashboard() {
               <p className="text-3xl font-bold text-orange-600 mt-1">
                 {stats?.totals?.open_issues || 0}
               </p>
+              <p className="text-xs text-gray-400 mt-1">su {totalIssues} totali</p>
             </div>
             <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
               <AlertTriangle className="text-orange-600" size={24} />
@@ -121,60 +167,221 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Status Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Stato Problematiche</h2>
+      {/* ── Guasti per Gruppo ── */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="flex items-center gap-2 mb-5">
+          <BarChart2 className="text-primary-600" size={20} />
+          <h2 className="text-lg font-semibold text-gray-800">Guasti per Gruppo</h2>
+          <span className="ml-auto text-xs text-gray-400">{totalIssues} problematiche totali</span>
+        </div>
+
+        {stats?.groupStats?.length ? (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                <span className="text-gray-600">Aperte</span>
-              </div>
-              <span className="font-semibold">{getStatusCount('aperta')}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-blue-400"></div>
-                <span className="text-gray-600">In Lavorazione</span>
-              </div>
-              <span className="font-semibold">{getStatusCount('in_lavorazione')}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                <span className="text-gray-600">Risolte</span>
-              </div>
-              <span className="font-semibold">{getStatusCount('risolta')}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-gray-400"></div>
-                <span className="text-gray-600">Chiuse</span>
-              </div>
-              <span className="font-semibold">{getStatusCount('chiusa')}</span>
-            </div>
+            {stats.groupStats.map((group, idx) => {
+              const color = GROUP_COLORS[idx % GROUP_COLORS.length];
+              const count = parseInt(group.count);
+              const percent = pct(count);
+              return (
+                <div key={group.id}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-block w-2.5 h-2.5 rounded-full ${color.bg}`} />
+                      <span className="text-sm font-medium text-gray-700">{group.name}</span>
+                      {group.code && (
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${color.light} ${color.text} font-mono`}>
+                          {group.code}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-400">{percent}%</span>
+                      <span className="text-sm font-bold text-gray-800 w-6 text-right">{count}</span>
+                    </div>
+                  </div>
+                  <PercentBar percent={percent} colorClass={color.bg} />
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-gray-400 text-sm text-center py-6">Nessun dato disponibile</p>
+        )}
+      </div>
+
+      {/* ── Stato + Tipo + Priorità ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* Stato */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h2 className="text-base font-semibold text-gray-800 mb-4">Stato Problematiche</h2>
+          <div className="space-y-3">
+            {[
+              { status: 'aperta',        label: 'Aperte',        color: 'bg-yellow-400' },
+              { status: 'in_lavorazione',label: 'In Lavorazione',color: 'bg-blue-400' },
+              { status: 'risolta',       label: 'Risolte',       color: 'bg-green-400' },
+              { status: 'chiusa',        label: 'Chiuse',        color: 'bg-gray-400' },
+            ].map(({ status, label, color }) => {
+              const count = getStatusCount(status);
+              const percent = pct(count);
+              return (
+                <div key={status}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${color}`} />
+                      <span className="text-sm text-gray-600">{label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400">{percent}%</span>
+                      <span className="text-sm font-bold w-6 text-right">{count}</span>
+                    </div>
+                  </div>
+                  <PercentBar percent={percent} colorClass={color} />
+                </div>
+              );
+            })}
           </div>
         </div>
 
+        {/* Tipo */}
         <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Tipo Problematiche</h2>
-          <div className="flex gap-6">
-            <div className="flex-1 text-center p-4 bg-purple-50 rounded-lg">
-              <Zap className="mx-auto text-purple-600 mb-2" size={32} />
-              <p className="text-2xl font-bold text-purple-600">{getTypeCount('ELETTRICO')}</p>
-              <p className="text-sm text-gray-600">Elettriche</p>
-            </div>
-            <div className="flex-1 text-center p-4 bg-amber-50 rounded-lg">
-              <Cog className="mx-auto text-amber-600 mb-2" size={32} />
-              <p className="text-2xl font-bold text-amber-600">{getTypeCount('MECCANICO')}</p>
-              <p className="text-sm text-gray-600">Meccaniche</p>
-            </div>
+          <h2 className="text-base font-semibold text-gray-800 mb-4">Tipo Problematiche</h2>
+          <div className="space-y-4">
+            {[
+              { type: 'ELETTRICO', label: 'Elettriche', icon: Zap, color: 'bg-purple-500', light: 'bg-purple-50', text: 'text-purple-600' },
+              { type: 'MECCANICO', label: 'Meccaniche', icon: Cog, color: 'bg-amber-500', light: 'bg-amber-50', text: 'text-amber-600' },
+            ].map(({ type, label, icon: Icon, color, light, text }) => {
+              const count = getTypeCount(type);
+              const percent = pct(count);
+              return (
+                <div key={type} className={`p-4 rounded-lg ${light}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Icon className={text} size={18} />
+                      <span className={`text-sm font-medium ${text}`}>{label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400">{percent}%</span>
+                      <span className={`text-xl font-bold ${text}`}>{count}</span>
+                    </div>
+                  </div>
+                  <PercentBar percent={percent} colorClass={color} />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Priorità */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h2 className="text-base font-semibold text-gray-800 mb-4">Distribuzione Priorità</h2>
+          <div className="space-y-3">
+            {Object.entries(PRIORITY_CONFIG).map(([key, cfg]) => {
+              const count = parseInt(stats?.priorityStats?.find(p => p.priority === key)?.count || 0);
+              const percent = pct(count);
+              return (
+                <div key={key}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${cfg.color}`} />
+                      <span className="text-sm text-gray-600">{cfg.label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400">{percent}%</span>
+                      <span className="text-sm font-bold w-6 text-right">{count}</span>
+                    </div>
+                  </div>
+                  <PercentBar percent={percent} colorClass={cfg.color} />
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Recent Issues */}
+      {/* ── Trend Mensile + Top Macchine ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* Trend mensile */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-5">
+            <TrendingUp className="text-primary-600" size={20} />
+            <h2 className="text-base font-semibold text-gray-800">Trend Ultimi 12 Mesi</h2>
+          </div>
+          {stats?.monthlyTrend?.length ? (
+            <div className="flex items-end gap-1.5 h-40">
+              {stats.monthlyTrend.map((m) => {
+                const count = parseInt(m.count);
+                const heightPct = maxMonthly > 0 ? (count / maxMonthly) * 100 : 0;
+                return (
+                  <div key={m.month} className="flex-1 flex flex-col items-center gap-1 group">
+                    <span className="text-xs font-semibold text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {count}
+                    </span>
+                    <div className="w-full flex items-end" style={{ height: '120px' }}>
+                      <div
+                        className="w-full bg-primary-500 rounded-t hover:bg-primary-600 transition-colors cursor-default"
+                        style={{ height: `${Math.max(heightPct, 3)}%` }}
+                        title={`${m.label}: ${count} guasti`}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-400 rotate-[-45deg] origin-top-left translate-y-2 translate-x-1 whitespace-nowrap">
+                      {m.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-gray-400 text-sm text-center py-10">Nessun dato nel periodo</p>
+          )}
+        </div>
+
+        {/* Top macchine */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-5">
+            <Settings2 className="text-primary-600" size={20} />
+            <h2 className="text-base font-semibold text-gray-800">Top 5 Macchine per Guasti</h2>
+          </div>
+          {stats?.topMachines?.length ? (
+            <div className="space-y-3">
+              {stats.topMachines.map((machine, idx) => {
+                const count = parseInt(machine.count);
+                const maxCount = parseInt(stats.topMachines[0]?.count || 1);
+                const widthPct = Math.round((count / maxCount) * 100);
+                const medals = ['🥇', '🥈', '🥉', '4°', '5°'];
+                return (
+                  <div key={`${machine.numero_commessa}-${idx}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm w-6">{medals[idx]}</span>
+                        <div>
+                          <span className="text-sm font-mono font-semibold text-gray-800">
+                            {machine.numero_commessa}
+                          </span>
+                          {machine.customer_name && machine.customer_name !== '-' && (
+                            <span className="text-xs text-gray-400 ml-2">{machine.customer_name}</span>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-sm font-bold text-gray-800">{count}</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-2 rounded-full bg-primary-500 transition-all duration-700"
+                        style={{ width: `${widthPct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-gray-400 text-sm text-center py-10">Nessun dato disponibile</p>
+          )}
+        </div>
+      </div>
+
+      {/* ── Problematiche Recenti ── */}
       <div className="bg-white rounded-xl shadow-sm p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-800">Problematiche Recenti</h2>
@@ -243,8 +450,8 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* ── Azioni Rapide ── */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Link
           to="/issues/new"
           className="bg-primary-600 text-white p-4 rounded-xl hover:bg-primary-700 transition flex items-center gap-3"

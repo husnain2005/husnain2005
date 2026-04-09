@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Avvio GIANA...</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      min-height:100vh;
+      background:linear-gradient(135deg,#0f2443 0%,#1e3a5f 40%,#0d1f38 100%);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+      overflow:hidden;
+    }
+    body::before{
+      content:'';position:fixed;inset:0;
+      background-image:linear-gradient(rgba(59,130,246,.07) 1px,transparent 1px),
+                       linear-gradient(90deg,rgba(59,130,246,.07) 1px,transparent 1px);
+      background-size:40px 40px;pointer-events:none;
+    }
+    body::after{
+      content:'';position:fixed;width:600px;height:600px;border-radius:50%;
+      border:1px solid rgba(59,130,246,.12);top:50%;left:50%;
+      transform:translate(-50%,-50%);
+      box-shadow:0 0 0 80px rgba(59,130,246,.04),0 0 0 160px rgba(59,130,246,.03),
+                 0 0 0 240px rgba(59,130,246,.02);
+      pointer-events:none;
+    }
+
+    .wrap{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;}
+
+    .logo-wrap{position:relative;width:120px;height:120px;margin-bottom:32px;}
+    .ring{position:absolute;inset:0;border-radius:50%;border:2px solid transparent;
+          border-top-color:#3b82f6;border-right-color:rgba(59,130,246,.3);
+          animation:spin 1.4s linear infinite;}
+    .ring-inner{position:absolute;inset:12px;border-radius:50%;border:2px solid transparent;
+                border-bottom-color:#60a5fa;border-left-color:rgba(96,165,250,.3);
+                animation:spin 1s linear infinite reverse;}
+    .logo-bg{position:absolute;inset:20px;border-radius:50%;
+             background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);
+             display:flex;align-items:center;justify-content:center;}
+    .gear{width:44px;height:44px;animation:pulse 2s ease-in-out infinite;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes pulse{0%,100%{opacity:.9;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}
+
+    h1{font-size:42px;font-weight:800;letter-spacing:.12em;color:#fff;
+       text-shadow:0 0 40px rgba(59,130,246,.5);}
+    .sub{font-size:13px;font-weight:400;letter-spacing:.3em;text-transform:uppercase;
+         color:rgba(148,163,184,.8);margin-top:6px;margin-bottom:48px;}
+
+    .track{width:260px;height:3px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-bottom:20px;}
+    .bar{height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#60a5fa);
+         border-radius:99px;transition:width .4s ease;box-shadow:0 0 12px rgba(59,130,246,.8);}
+    .bar.error{background:#ef4444;box-shadow:0 0 12px rgba(239,68,68,.8);}
+
+    .status{font-size:12px;color:rgba(148,163,184,.7);letter-spacing:.05em;
+            height:18px;transition:opacity .3s ease;margin-bottom:8px;}
+    .dots{font-size:11px;color:rgba(100,116,139,.5);height:16px;}
+
+    .footer{position:fixed;bottom:28px;font-size:11px;
+            color:rgba(100,116,139,.5);letter-spacing:.05em;}
+
+    .btn-retry{display:none;margin-top:24px;padding:10px 28px;
+               background:rgba(59,130,246,.2);border:1px solid rgba(59,130,246,.4);
+               color:#60a5fa;border-radius:8px;cursor:pointer;font-size:13px;
+               letter-spacing:.05em;transition:background .2s;}
+    .btn-retry:hover{background:rgba(59,130,246,.35);}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="logo-wrap">
+      <div class="ring"></div>
+      <div class="ring-inner"></div>
+      <div class="logo-bg">
+        <svg class="gear" viewBox="0 0 24 24" fill="none">
+          <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="#60a5fa"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"
+                stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+
+    <h1>GIANA</h1>
+    <div class="sub">Gestionale Macchine CNC</div>
+
+    <div class="track"><div class="bar" id="bar"></div></div>
+    <div class="status" id="status">Avvio sistema...</div>
+    <div class="dots" id="dots"></div>
+
+    <button class="btn-retry" id="btn-retry" onclick="startPolling()">Riprova</button>
+  </div>
+
+  <div class="footer">Giuseppe Giana S.r.l. &mdash; Sistema di Manutenzione</div>
+
+  <script>
+    const bar    = document.getElementById('bar');
+    const status = document.getElementById('status');
+    const dots   = document.getElementById('dots');
+    const retry  = document.getElementById('btn-retry');
+
+    let attempts = 0;
+    let dotsTimer = null;
+    let pollTimer = null;
+
+    function setBar(pct){ bar.style.width = pct + '%'; }
+    function setStatus(txt){
+      status.style.opacity = '0';
+      setTimeout(() => { status.textContent = txt; status.style.opacity = '1'; }, 150);
+    }
+
+    // Animazione puntini
+    function startDots(){
+      clearInterval(dotsTimer);
+      let n = 0;
+      dotsTimer = setInterval(() => {
+        dots.textContent = 'attendi' + '.'.repeat((n++ % 3) + 1);
+      }, 500);
+    }
+    function stopDots(){ clearInterval(dotsTimer); dots.textContent = ''; }
+
+    function startPolling(){
+      retry.style.display = 'none';
+      bar.classList.remove('error');
+      attempts = 0;
+      setBar(10);
+      setStatus('Connessione al sistema...');
+      startDots();
+      poll();
+    }
+
+    function poll(){
+      // Usa un'immagine invece di fetch: funziona anche da file locale
+      const img = new Image();
+      const ts = Date.now();
+      img.onload = function(){
+        // Server risponde → entriamo nell'app
+        stopDots();
+        setBar(100);
+        setStatus('Pronto! Apertura in corso...');
+        setTimeout(() => { window.location.href = 'http://localhost:3000'; }, 600);
+      };
+      img.onerror = function(){
+        // onerror può essere sia "server giù" che "immagine 404"
+        // Se siamo arrivati qui e riceviamo una risposta HTTP (anche 404),
+        // significa che il server è attivo → proviamo a fare redirect diretto
+        // Se invece è un errore di rete, il browser non aggiorna img.complete
+        // In entrambi i casi aspettiamo e riproviamo
+        attempts++;
+        if(attempts === 1){ setBar(20); setStatus('Avvio container Docker...'); }
+        else if(attempts === 8){ setBar(40); setStatus('Avvio sistema in corso...'); }
+        else if(attempts === 20){ setBar(60); setStatus('Quasi pronto...'); }
+        else if(attempts >= 90){
+          stopDots();
+          setBar(100); bar.classList.add('error');
+          setStatus('Impossibile avviare il sistema');
+          dots.textContent = 'Verificare che Docker Desktop sia in esecuzione';
+          retry.style.display = 'block';
+          return;
+        }
+        pollTimer = setTimeout(poll, 1000);
+      };
+      // Carica il favicon dell'app (file sempre presente nel frontend)
+      img.src = 'http://localhost:3000/vite.svg?' + ts;
+    }
+
+    startPolling();
+  </script>
+</body>
+</html>

@@ -607,7 +607,8 @@ const getStats = async (req, res) => {
     // Recent issues
     const recentIssues = await db.query(`
       SELECT i.id, i.title, i.status, i.priority, i.created_at,
-             m.numero_commessa, c.name as customer_name
+             COALESCE(m.numero_commessa, i.numero_commessa) as numero_commessa,
+             COALESCE(c.name, i.customer_fallback) as customer_name
       FROM issues i
       LEFT JOIN machines m ON i.machine_id = m.id
       LEFT JOIN customers c ON m.customer_id = c.id
@@ -626,12 +627,70 @@ const getStats = async (req, res) => {
         (SELECT COUNT(*) FROM interventions WHERE status = 'in_corso') as active_interventions
     `);
 
+    // Issues by group with percentage
+    const groupStats = await db.query(`
+      SELECT
+        ig.id,
+        ig.name,
+        ig.code,
+        COUNT(i.id) as count
+      FROM issue_groups ig
+      LEFT JOIN issues i ON i.issue_group_id = ig.id
+      WHERE ig.is_active = true
+      GROUP BY ig.id, ig.name, ig.code, ig.display_order
+      ORDER BY count DESC, ig.display_order
+    `);
+
+    // Issues per month (last 12 months)
+    const monthlyTrend = await db.query(`
+      SELECT
+        TO_CHAR(DATE_TRUNC('month', created_at), 'YYYY-MM') as month,
+        TO_CHAR(DATE_TRUNC('month', created_at), 'Mon YY') as label,
+        COUNT(*) as count
+      FROM issues
+      WHERE created_at >= NOW() - INTERVAL '12 months'
+      GROUP BY DATE_TRUNC('month', created_at)
+      ORDER BY DATE_TRUNC('month', created_at)
+    `);
+
+    // Top 5 machines by issue count
+    const topMachines = await db.query(`
+      SELECT
+        COALESCE(m.numero_commessa, i.numero_commessa, 'N/D') as numero_commessa,
+        COALESCE(c.name, i.customer_fallback, '-') as customer_name,
+        COUNT(i.id) as count
+      FROM issues i
+      LEFT JOIN machines m ON i.machine_id = m.id
+      LEFT JOIN customers c ON m.customer_id = c.id
+      GROUP BY COALESCE(m.numero_commessa, i.numero_commessa, 'N/D'),
+               COALESCE(c.name, i.customer_fallback, '-')
+      ORDER BY count DESC
+      LIMIT 5
+    `);
+
+    // Issues by group and type (ELETTRICO/MECCANICO breakdown per group)
+    const groupTypeStats = await db.query(`
+      SELECT
+        ig.name as group_name,
+        i.issue_type,
+        COUNT(*) as count
+      FROM issues i
+      JOIN issue_groups ig ON i.issue_group_id = ig.id
+      WHERE ig.is_active = true
+      GROUP BY ig.name, i.issue_type
+      ORDER BY ig.name, i.issue_type
+    `);
+
     res.json({
       statusStats: statusStats.rows,
       typeStats: typeStats.rows,
       priorityStats: priorityStats.rows,
       recentIssues: recentIssues.rows,
-      totals: totals.rows[0]
+      totals: totals.rows[0],
+      groupStats: groupStats.rows,
+      monthlyTrend: monthlyTrend.rows,
+      topMachines: topMachines.rows,
+      groupTypeStats: groupTypeStats.rows
     });
 
   } catch (error) {

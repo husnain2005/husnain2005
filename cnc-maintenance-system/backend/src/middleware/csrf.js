@@ -52,8 +52,9 @@ const verifyCsrf = (req, res, next) => {
     return next();
   }
 
-  // Skip CSRF check for the login endpoint (no cookie exists yet)
-  if (req.path === '/login' && req.baseUrl === '/api/auth') {
+  // Skip CSRF check for the login endpoint (no cookie exists yet, or stale cookie)
+  // req.baseUrl is '' when mounted at app level, so check the full path
+  if (req.path === '/api/auth/login' || req.path === '/api/csrf-token') {
     return next();
   }
 

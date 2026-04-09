@@ -50,12 +50,12 @@ services:
       JWT_SECRET: ${JWT_SECRET:-cambia-questa-chiave-segreta-molto-lunga-123}
       JWT_EXPIRES_IN: 24h
       UPLOAD_DIR: /app/uploads
+      BACKUP_DIR: /app/backups
       MAX_FILE_SIZE: 52428800
       CORS_ORIGIN: ${PUBLIC_URL:-https://cnc.example.com}
     volumes:
       - uploads_data:/app/uploads
-    ports:
-      - "3001:3001"
+      - backups_data:/app/backups
 
   # ---------------------------------------------------------------------------
   # Frontend React (build statico con Nginx)
@@ -104,3 +104,4 @@ services:
 volumes:
   postgres_data:
   uploads_data:
+  backups_data:

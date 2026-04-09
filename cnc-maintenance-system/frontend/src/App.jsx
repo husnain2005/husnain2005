@@ -18,6 +18,7 @@ import Profile from './pages/Profile';
 import Interventions from './pages/Interventions';
 import InterventionDetail from './pages/InterventionDetail';
 import InterventionCreate from './pages/InterventionCreate';
+import Backup from './pages/Backup';
 
 // Protected Route wrapper
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
@@ -81,6 +82,11 @@ function App() {
         <Route path="users" element={
           <ProtectedRoute requireAdmin>
             <Users />
+          </ProtectedRoute>
+        } />
+        <Route path="backup" element={
+          <ProtectedRoute requireAdmin>
+            <Backup />
           </ProtectedRoute>
         } />
         <Route path="profile" element={<Profile />} />

@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const { sendInterventionNotification } = require('../services/emailService');
 
 /**
  * Get all interventions with filtering
@@ -348,6 +349,50 @@ const createIntervention = async (req, res) => {
     res.status(201).json({
       message: 'Intervento creato con successo',
       intervention: result.rows[0]
+    });
+
+    // Invia email di notifica in background (non blocca la risposta al client)
+    setImmediate(async () => {
+      try {
+        // Recupera dati completi per l'email (macchina, cliente, responsabile)
+        const fullData = await db.query(`
+          SELECT i.*,
+            m.numero_commessa, m.serial_number,
+            mm.machine_type, mm.model_name,
+            c.name as customer_name, c.address as customer_address,
+            c.city as customer_city, c.phone as customer_phone,
+            u.full_name as assigned_to_name, u.email as assigned_to_email,
+            uc.full_name as created_by_name
+          FROM interventions i
+          LEFT JOIN machines m ON i.machine_id = m.id
+          LEFT JOIN machine_models mm ON m.model_id = mm.id
+          LEFT JOIN customers c ON m.customer_id = c.id
+          LEFT JOIN users u ON i.assigned_to = u.id
+          LEFT JOIN users uc ON i.created_by = uc.id
+          WHERE i.id = $1
+        `, [interventionId]);
+
+        if (fullData.rows.length === 0) return;
+
+        const intervention = fullData.rows[0];
+
+        // Raccoglie tutte le email dei tecnici assegnati
+        const techEmails = await db.query(`
+          SELECT DISTINCT u.email
+          FROM intervention_technicians it
+          JOIN users u ON it.user_id = u.id
+          WHERE it.intervention_id = $1 AND u.email IS NOT NULL AND u.email != ''
+        `, [interventionId]);
+
+        const recipients = [
+          intervention.assigned_to_email,
+          ...techEmails.rows.map(r => r.email)
+        ];
+
+        await sendInterventionNotification(intervention, recipients);
+      } catch (emailErr) {
+        console.error('[Email] Errore notifica intervento:', emailErr.message);
+      }
     });
 
   } catch (error) {

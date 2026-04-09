@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import OnlineUsers from './OnlineUsers';
+import { startHeartbeat, stopHeartbeat } from '../services/presenceService';
 import {
   LayoutDashboard,
   Wrench,
@@ -14,7 +16,8 @@ import {
   X,
   ChevronDown,
   Calendar,
-  UserCircle
+  UserCircle,
+  DatabaseBackup
 } from 'lucide-react';
 
 const navItems = [
@@ -29,6 +32,7 @@ const navItems = [
 
 const adminItems = [
   { path: '/users', icon: Users, label: 'Utenti' },
+  { path: '/backup', icon: DatabaseBackup, label: 'Backup' },
 ];
 
 function Layout() {
@@ -36,6 +40,12 @@ function Layout() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  // Avvia heartbeat presenza all'ingresso nel layout, ferma all'uscita
+  useEffect(() => {
+    startHeartbeat();
+    return () => stopHeartbeat();
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -107,6 +117,9 @@ function Layout() {
               <X size={20} />
             </button>
           </div>
+
+          {/* Utenti online */}
+          <OnlineUsers currentUserId={user?.id} />
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">

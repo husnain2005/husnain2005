@@ -117,6 +117,25 @@ export const auditApi = {
   getRecordHistory: (tableName, recordId) => api.get(`/audit/${tableName}/${recordId}`),
 };
 
+export const backupApi = {
+  create: () => api.post('/backup/create'),
+  list: () => api.get('/backup/list'),
+  download: (filename) =>
+    api.get(`/backup/download/${encodeURIComponent(filename)}`, { responseType: 'blob' }),
+  delete: (filename) => api.delete(`/backup/${encodeURIComponent(filename)}`),
+  getSettings: () => api.get('/backup/settings'),
+  updateSettings: (data) => api.put('/backup/settings', data),
+  restore: (file, onUploadProgress) => {
+    const formData = new FormData();
+    formData.append('backup', file);
+    return api.post('/backup/restore', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress,
+      timeout: 120000,
+    });
+  },
+};
+
 export const interventionsApi = {
   getAll: (params) => api.get('/interventions', { params }),
   getById: (id) => api.get(`/interventions/${id}`),

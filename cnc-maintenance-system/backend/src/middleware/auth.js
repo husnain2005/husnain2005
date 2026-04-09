@@ -1,7 +1,11 @@
 const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('ERRORE CRITICO: JWT_SECRET non impostato. Il server non può avviarsi.');
+  process.exit(1);
+}
 
 /**
  * Extract JWT token from the request.

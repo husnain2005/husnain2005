@@ -3,8 +3,51 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 const { generateCsrfToken, setCsrfCookie } = require('../middleware/csrf');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+
+// Blocco account: tiene traccia dei tentativi falliti per IP+username
+// Struttura: Map<key, { count, lockedUntil }>
+const loginAttempts = new Map();
+const MAX_ATTEMPTS = 5;
+const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minuti
+
+function getAttemptKey(req, username) {
+  return `${req.ip}:${(username || '').toLowerCase()}`;
+}
+
+function checkLocked(key) {
+  const entry = loginAttempts.get(key);
+  if (!entry) return false;
+  if (entry.lockedUntil && Date.now() < entry.lockedUntil) return true;
+  if (entry.lockedUntil && Date.now() >= entry.lockedUntil) {
+    loginAttempts.delete(key);
+  }
+  return false;
+}
+
+function recordFailure(key) {
+  const entry = loginAttempts.get(key) || { count: 0, lockedUntil: null };
+  entry.count += 1;
+  if (entry.count >= MAX_ATTEMPTS) {
+    entry.lockedUntil = Date.now() + LOCK_DURATION_MS;
+  }
+  loginAttempts.set(key, entry);
+}
+
+function clearAttempts(key) {
+  loginAttempts.delete(key);
+}
+
+// Pulizia periodica degli entry scaduti (ogni ora)
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of loginAttempts.entries()) {
+    if (!entry.lockedUntil || now >= entry.lockedUntil) {
+      loginAttempts.delete(key);
+    }
+  }
+}, 60 * 60 * 1000);
 
 /**
  * Cookie options for the JWT HttpOnly cookie.
@@ -13,7 +56,7 @@ const jwtCookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'strict',
-  maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  // Nessun maxAge = session cookie: Chrome lo cancella alla chiusura del browser
   path: '/'
 };
 
@@ -32,6 +75,16 @@ const login = async (req, res) => {
       });
     }
 
+    const attemptKey = getAttemptKey(req, username);
+
+    // Controlla se l'account è temporaneamente bloccato
+    if (checkLocked(attemptKey)) {
+      return res.status(429).json({
+        error: 'Account temporaneamente bloccato',
+        message: 'Troppi tentativi falliti. Riprova tra 15 minuti.'
+      });
+    }
+
     // Find user by username, email, or user_id
     const result = await db.query(
       `SELECT id, user_id, username, email, password_hash, full_name, role, is_active, mfa_enabled
@@ -41,6 +94,7 @@ const login = async (req, res) => {
     );
 
     if (result.rows.length === 0) {
+      recordFailure(attemptKey);
       return res.status(401).json({
         error: 'Credenziali non valide',
         message: 'Username o password errati'
@@ -60,11 +114,15 @@ const login = async (req, res) => {
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
 
     if (!isValidPassword) {
+      recordFailure(attemptKey);
       return res.status(401).json({
         error: 'Credenziali non valide',
         message: 'Username o password errati'
       });
     }
+
+    // Login riuscito: azzera i tentativi falliti
+    clearAttempts(attemptKey);
 
     // Check if MFA is enabled
     if (user.mfa_enabled) {

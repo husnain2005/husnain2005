@@ -7,7 +7,7 @@ RUN npm ci --only=production
 
 # Production stage
 FROM node:20-alpine
-RUN apk add --no-cache dumb-init vips tini && \
+RUN apk add --no-cache dumb-init vips tini postgresql-client && \
     rm -rf /var/cache/apk/*
 WORKDIR /app
 
@@ -16,13 +16,13 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY package*.json ./
 COPY src ./src
 
-# Create uploads directory
-RUN mkdir -p uploads/attachments uploads/thumbnails uploads/pdfs uploads/images
+# Create required directories
+RUN mkdir -p uploads/attachments uploads/thumbnails uploads/pdfs uploads/images logs backups
 
 # Create entrypoint script to fix permissions at runtime
 RUN echo '#!/bin/sh' > /entrypoint.sh && \
-    echo 'chown -R node:node /app/uploads 2>/dev/null || true' >> /entrypoint.sh && \
-    echo 'chmod -R 755 /app/uploads 2>/dev/null || true' >> /entrypoint.sh && \
+    echo 'chown -R node:node /app/uploads /app/logs /app/backups 2>/dev/null || true' >> /entrypoint.sh && \
+    echo 'chmod -R 755 /app/uploads /app/logs /app/backups 2>/dev/null || true' >> /entrypoint.sh && \
     echo 'exec su-exec node "$@"' >> /entrypoint.sh && \
     chmod +x /entrypoint.sh && \
     apk add --no-cache su-exec

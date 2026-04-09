@@ -17,6 +17,9 @@ const attachmentsRoutes = require('./routes/attachments');
 const pdfRoutes = require('./routes/pdf');
 const auditRoutes = require('./routes/audit');
 const interventionsRoutes = require('./routes/interventions');
+const backupRoutes = require('./routes/backup');
+const presenceRoutes = require('./routes/presence');
+const { initBackupScheduler } = require('./controllers/backupController');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -93,6 +96,8 @@ app.use('/api/attachments', attachmentsRoutes);
 app.use('/api/pdf', pdfRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/interventions', interventionsRoutes);
+app.use('/api/backup', backupRoutes);
+app.use('/api/presence', presenceRoutes);
 
 // Serve uploaded files (in production, use nginx)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -117,6 +122,8 @@ app.use((err, req, res, next) => {
 });
 
 // ─── Start Server ────────────────────────────────────────────────────────────
+initBackupScheduler();
+
 app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════════════════════════╗

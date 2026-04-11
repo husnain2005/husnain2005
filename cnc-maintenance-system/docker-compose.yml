@@ -50,6 +50,7 @@ services:
       UPLOAD_DIR: /app/uploads
       BACKUP_DIR: /app/backups
       MAX_FILE_SIZE: ${MAX_FILE_SIZE:-10485760}
+      TZ: Europe/Rome
     volumes:
       - uploads_data:/app/uploads
       - backups_data:/app/backups

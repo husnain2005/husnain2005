@@ -2,22 +2,49 @@ const nodemailer = require('nodemailer');
 
 let transporter = null;
 
+const PROVIDER_DEFAULTS = {
+  gmail: {
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+  },
+  outlook: {
+    host: 'smtp.office365.com',
+    port: 587,
+    secure: false,
+  },
+};
+
 function getTransporter() {
   if (transporter) return transporter;
 
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SECURE } = process.env;
+  const { SMTP_PROVIDER, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SECURE } = process.env;
 
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+  if (!SMTP_USER || !SMTP_PASS) {
+    return null;
+  }
+
+  const provider = (SMTP_PROVIDER || '').toLowerCase();
+  const defaults = PROVIDER_DEFAULTS[provider] || {};
+
+  const host = SMTP_HOST || defaults.host;
+  const port = parseInt(SMTP_PORT) || defaults.port || 587;
+  const secure = SMTP_SECURE !== undefined ? SMTP_SECURE === 'true' : (defaults.secure || false);
+
+  if (!host) {
+    console.warn('[Email] Nessun SMTP_HOST configurato e provider sconosciuto. Imposta SMTP_PROVIDER=gmail o SMTP_PROVIDER=outlook.');
     return null;
   }
 
   transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: parseInt(SMTP_PORT) || 587,
-    secure: SMTP_SECURE === 'true',
-    auth: { user: SMTP_USER, pass: SMTP_PASS }
+    host,
+    port,
+    secure,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+    ...(provider === 'outlook' ? { tls: { ciphers: 'SSLv3' } } : {}),
   });
 
+  console.log(`[Email] Transporter configurato — provider: ${provider || 'custom'}, host: ${host}:${port}`);
   return transporter;
 }
 

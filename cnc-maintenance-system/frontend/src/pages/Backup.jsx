@@ -40,6 +40,7 @@ export default function Backup() {
   const [deletingFile, setDeletingFile] = useState(null);
   const [downloadingFile, setDownloadingFile] = useState(null);
   const [flash, setFlash] = useState(null); // { type: 'success'|'error', msg }
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   const [settings, setSettings] = useState(null);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -58,14 +59,29 @@ export default function Backup() {
     setTimeout(() => setFlash(null), 4000);
   };
 
-  const loadBackups = useCallback(async () => {
+  const loadBackups = useCallback(async (silent = false) => {
     try {
       const res = await backupApi.list();
-      setBackups(res.data);
+      if (silent) {
+        setBackups(prev => {
+          const prevNames = prev.map(b => b.filename).join(',');
+          const newNames = res.data.map(b => b.filename).join(',');
+          if (prevNames !== newNames) {
+            if (res.data.length > prev.length) {
+              showFlash('success', `Nuovo backup automatico creato: ${res.data[0]?.filename}`);
+            }
+            return res.data;
+          }
+          return prev;
+        });
+      } else {
+        setBackups(res.data);
+      }
+      setLastUpdated(new Date());
     } catch {
-      showFlash('error', 'Errore nel caricamento della lista backup');
+      if (!silent) showFlash('error', 'Errore nel caricamento della lista backup');
     } finally {
-      setLoadingList(false);
+      if (!silent) setLoadingList(false);
     }
   }, []);
 
@@ -82,6 +98,8 @@ export default function Backup() {
   useEffect(() => {
     loadBackups();
     loadSettings();
+    const interval = setInterval(() => loadBackups(true), 10000);
+    return () => clearInterval(interval);
   }, [loadBackups, loadSettings]);
 
   const handleCreate = async () => {
@@ -567,13 +585,20 @@ export default function Backup() {
               </span>
             )}
           </div>
-          <button
-            onClick={() => { setLoadingList(true); loadBackups(); }}
-            className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
-            title="Aggiorna lista"
-          >
-            <RefreshCw size={16} className={loadingList ? 'animate-spin' : ''} />
-          </button>
+          <div className="flex items-center gap-2">
+            {lastUpdated && (
+              <span className="text-xs text-gray-400 hidden sm:block">
+                Aggiornato alle {lastUpdated.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+            )}
+            <button
+              onClick={() => { setLoadingList(true); loadBackups(); }}
+              className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
+              title="Aggiorna lista"
+            >
+              <RefreshCw size={16} className={loadingList ? 'animate-spin' : ''} />
+            </button>
+          </div>
         </div>
 
         {loadingList ? (

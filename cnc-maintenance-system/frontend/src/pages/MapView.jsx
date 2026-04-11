@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { machinesApi, customersApi } from '../services/api';
-import { Wrench, AlertTriangle, Building2, ExternalLink } from 'lucide-react';
+import { Wrench, AlertTriangle, Building2, ExternalLink, Search, X } from 'lucide-react';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -44,6 +44,10 @@ function MapView() {
   const [layer, setLayer]           = useState('all');
   const [selected, setSelected]     = useState(null);
   const [selectedType, setSelectedType] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchRef = useRef(null);
+  const mapRef = useRef(null);
 
   const lat = parseFloat(searchParams.get('lat'));
   const lng = parseFloat(searchParams.get('lng'));
@@ -72,6 +76,43 @@ function MapView() {
   const visMachines   = showMachines  ? machines.filter(m => m.latitude && m.longitude)  : [];
   const visCust       = showCustomers ? customers.filter(c => c.latitude && c.longitude) : [];
 
+  const q = searchQuery.trim().toLowerCase();
+  const searchResults = useMemo(() => {
+    if (!q) return [];
+    const results = [];
+    machines.forEach(m => {
+      if (
+        (m.numero_commessa || '').toLowerCase().includes(q) ||
+        (m.machine_type || '').toLowerCase().includes(q) ||
+        (m.model_name || '').toLowerCase().includes(q) ||
+        (m.customer_name || '').toLowerCase().includes(q) ||
+        (m.serial_number || '').toLowerCase().includes(q)
+      ) {
+        results.push({ ...m, _type: 'machine' });
+      }
+    });
+    customers.forEach(c => {
+      if (
+        (c.name || '').toLowerCase().includes(q) ||
+        (c.city || '').toLowerCase().includes(q) ||
+        (c.address || '').toLowerCase().includes(q)
+      ) {
+        results.push({ ...c, _type: 'customer' });
+      }
+    });
+    return results.slice(0, 8);
+  }, [q, machines, customers]);
+
+  const handleSelectResult = (item) => {
+    setSelected(item);
+    setSelectedType(item._type);
+    setSearchQuery('');
+    setSearchFocused(false);
+    if (item.latitude && item.longitude && mapRef.current) {
+      mapRef.current.setView([item.latitude, item.longitude], 14);
+    }
+  };
+
   const getMachineIcon  = (m) => m.open_issues_count > 0 ? iconMachineIssue : iconMachineOk;
   const getCustomerIcon = (c) => {
     if (c.open_issues_count > 0) return iconCustIssue;
@@ -86,6 +127,70 @@ function MapView() {
         <div>
           <h1 className="text-xl font-bold text-gray-800">Mappa</h1>
           <p className="text-xs text-gray-500">{visMachines.length} macchine · {visCust.length} clienti</p>
+        </div>
+
+        {/* Barra di ricerca */}
+        <div className="relative" ref={searchRef}>
+          <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-1.5 bg-white w-64 focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500 transition-all">
+            <Search size={15} className="text-gray-400 shrink-0" />
+            <input
+              type="text"
+              placeholder="Cerca cliente, macchina, città..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
+              className="flex-1 text-sm outline-none bg-transparent text-gray-700 placeholder-gray-400"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Dropdown risultati */}
+          {searchFocused && searchResults.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-[2000] overflow-hidden">
+              {searchResults.map((item, i) => (
+                <button
+                  key={i}
+                  onMouseDown={() => handleSelectResult(item)}
+                  className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-3 border-b border-gray-50 last:border-0"
+                >
+                  {item._type === 'machine' ? (
+                    <div className="p-1.5 bg-primary-100 rounded-lg shrink-0">
+                      <Wrench size={13} className="text-primary-600" />
+                    </div>
+                  ) : (
+                    <div className="p-1.5 bg-blue-100 rounded-lg shrink-0">
+                      <Building2 size={13} className="text-blue-600" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">
+                      {item._type === 'machine' ? item.numero_commessa : item.name}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">
+                      {item._type === 'machine'
+                        ? `${item.machine_type || ''} ${item.model_name || ''} · ${item.customer_name || ''}`
+                        : `${item.city || ''} ${item.address || ''}`}
+                    </p>
+                  </div>
+                  {!item.latitude && (
+                    <span className="text-xs text-gray-300 shrink-0">no GPS</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Nessun risultato */}
+          {searchFocused && q && searchResults.length === 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-[2000] px-4 py-3 text-sm text-gray-400">
+              Nessun risultato per "<strong>{q}</strong>"
+            </div>
+          )}
         </div>
 
         {/* Toggle layer */}
@@ -119,7 +224,7 @@ function MapView() {
             <div className="loader"/>
           </div>
         ) : (
-          <MapContainer center={center} zoom={defaultZoom} className="h-full w-full" scrollWheelZoom>
+          <MapContainer center={center} zoom={defaultZoom} className="h-full w-full" scrollWheelZoom ref={mapRef}>
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

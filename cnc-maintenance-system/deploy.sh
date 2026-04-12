@@ -9,8 +9,10 @@
 
 set -e
 
-# Auto-detect app directory (works wherever deploy.sh is placed)
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_URL="https://github.com/husnain2005/husnain2005.git"
+REPO_BRANCH="main"
+TMP_DIR="/tmp/cnc_deploy_$$"
 COMPOSE="docker compose -f $APP_DIR/docker-compose.prod.yml"
 
 GREEN='\033[0;32m'
@@ -21,6 +23,9 @@ NC='\033[0m'
 log() { echo -e "${CYAN}[>>]${NC} $1"; }
 ok()  { echo -e "${GREEN}[OK]${NC} $1"; }
 err() { echo -e "${RED}[!!]${NC} $1"; exit 1; }
+
+cleanup() { rm -rf "$TMP_DIR"; }
+trap cleanup EXIT
 
 if ! docker info &>/dev/null; then
   err "Docker non disponibile"
@@ -40,9 +45,18 @@ echo -e "${CYAN}║   gestionalegiana.com — Deploy       ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════╝${NC}"
 echo ""
 
-log "Pull aggiornamenti da GitHub..."
-cd "$APP_DIR" && git pull origin main
-ok "Codice aggiornato"
+log "Download aggiornamenti da GitHub..."
+git clone --depth 1 -b "$REPO_BRANCH" "$REPO_URL" "$TMP_DIR" --quiet
+ok "Codice scaricato"
+
+log "Sincronizzazione file (escluso .env, certbot, uploads, backups)..."
+rsync -a --delete \
+  --exclude='.env' \
+  --exclude='certbot/' \
+  --exclude='uploads/' \
+  --exclude='backups/' \
+  "$TMP_DIR/cnc-maintenance-system/" "$APP_DIR/"
+ok "File aggiornati"
 
 if [ "$MODE" = "backend" ] || [ "$MODE" = "full" ]; then
   log "Build backend..."

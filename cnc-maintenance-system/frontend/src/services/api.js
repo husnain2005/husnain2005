@@ -70,11 +70,13 @@ export const issuesApi = {
   addComment: (id, comment) => api.post(`/issues/${id}/comments`, { comment }),
   getGroups: () => api.get('/issues/groups'),
   getStats: () => api.get('/issues/stats'),
-  uploadAttachments: (id, files) => {
+  uploadAttachments: (id, files, onUploadProgress) => {
     const formData = new FormData();
     files.forEach(file => formData.append('files', file));
     return api.post(`/issues/${id}/attachments`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 300000,
+      onUploadProgress,
     });
   },
 };
@@ -164,7 +166,8 @@ export const interventionsApi = {
     if (documentType) formData.append('document_type', documentType);
     if (description) formData.append('description', description);
     return api.post(`/interventions/${id}/documents`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 300000
     });
   },
   deleteDocument: (id, docId) => api.delete(`/interventions/${id}/documents/${docId}`),

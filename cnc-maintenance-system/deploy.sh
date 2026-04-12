@@ -9,8 +9,9 @@
 
 set -e
 
-APP_DIR="/opt/cnc-maintenance"
-COMPOSE="docker-compose -f $APP_DIR/docker-compose.prod.yml"
+# Auto-detect app directory (works wherever deploy.sh is placed)
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+COMPOSE="docker compose -f $APP_DIR/docker-compose.prod.yml"
 
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'

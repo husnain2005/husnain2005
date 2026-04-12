@@ -325,19 +325,31 @@ const getUsers = async (req, res) => {
  */
 const createUser = async (req, res) => {
   try {
-    const { user_id, username, email, password, full_name, role } = req.body;
+    const { username, email, password, full_name, role } = req.body;
 
-    if (!user_id || !username || !email || !password) {
+    if (!username || !email || !password) {
       return res.status(400).json({
         error: 'Dati mancanti',
-        message: 'user_id, username, email e password sono obbligatori'
+        message: 'username, email e password sono obbligatori'
       });
+    }
+
+    // Auto-generate user_id (USR001, USR002, ...)
+    const lastId = await db.query(
+      `SELECT user_id FROM users WHERE user_id ~ '^USR[0-9]+$' ORDER BY user_id DESC LIMIT 1`
+    );
+    let user_id;
+    if (lastId.rows.length > 0) {
+      const num = parseInt(lastId.rows[0].user_id.replace('USR', ''), 10) + 1;
+      user_id = 'USR' + String(num).padStart(3, '0');
+    } else {
+      user_id = 'USR001';
     }
 
     // Check for existing user
     const existing = await db.query(
-      'SELECT id FROM users WHERE user_id = $1 OR username = $2 OR email = $3',
-      [user_id, username, email]
+      'SELECT id FROM users WHERE username = $1 OR email = $2',
+      [username, email]
     );
 
     if (existing.rows.length > 0) {

@@ -171,12 +171,6 @@ function Login() {
           </button>
         </form>
 
-        <div className="mt-6 pt-6 border-t text-center text-sm text-gray-500">
-          <p>Demo credentials:</p>
-          <p className="mt-1">
-            <strong>admin</strong> / password123
-          </p>
-        </div>
       </div>
     </div>
   );

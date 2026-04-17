@@ -46,7 +46,7 @@ function Users() {
   const [submitting, setSubmitting] = useState(false);
 
   const [createForm, setCreateForm] = useState({
-    user_id: '', username: '', email: '', password: '', full_name: '', role: 'tecnico'
+    username: '', email: '', password: '', full_name: '', role: 'tecnico'
   });
   const [editForm, setEditForm] = useState({ full_name: '', role: 'tecnico', is_active: true });
   const [pwdForm, setPwdForm] = useState({ newPassword: '', confirm: '' });
@@ -66,7 +66,7 @@ function Users() {
   };
 
   const openCreate = () => {
-    setCreateForm({ user_id: '', username: '', email: '', password: '', full_name: '', role: 'tecnico' });
+    setCreateForm({ username: '', email: '', password: '', full_name: '', role: 'tecnico' });
     setShowPwd(false); setError(''); setModal('create');
   };
 
@@ -301,31 +301,17 @@ function Users() {
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-2 rounded-lg">{error}</div>
             )}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  User ID <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text" required
-                  value={createForm.user_id}
-                  onChange={e => setCreateForm({ ...createForm, user_id: e.target.value })}
-                  placeholder="USR011"
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Username <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text" required
-                  value={createForm.username}
-                  onChange={e => setCreateForm({ ...createForm, username: e.target.value })}
-                  placeholder="mario.rossi"
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Username <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text" required
+                value={createForm.username}
+                onChange={e => setCreateForm({ ...createForm, username: e.target.value })}
+                placeholder="mario.rossi"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>

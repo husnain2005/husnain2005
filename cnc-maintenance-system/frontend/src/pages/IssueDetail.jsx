@@ -22,6 +22,8 @@ function IssueDetail() {
   const [submittingComment, setSubmittingComment] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({});
   const [saveError, setSaveError] = useState(null);
@@ -68,13 +70,42 @@ function IssueDetail() {
   const handleUpload = async () => {
     if (selectedFiles.length === 0) return;
 
+    // Check file size — Cloudflare free plan blocks requests > 100 MB
+    const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
+    if (totalSize > 95 * 1024 * 1024) {
+      setUploadError(
+        `File troppo grande (${(totalSize / 1024 / 1024).toFixed(1)} MB). ` +
+        'Il limite massimo è 95 MB. Comprimi il video prima di caricarlo.'
+      );
+      return;
+    }
+
     setUploading(true);
+    setUploadError(null);
+    setUploadProgress(0);
+
     try {
-      const response = await issuesApi.uploadAttachments(id, selectedFiles);
+      const formData = new FormData();
+      selectedFiles.forEach(file => formData.append('files', file));
+
+      const response = await issuesApi.uploadAttachments(id, selectedFiles, (progressEvent) => {
+        if (progressEvent.total) {
+          setUploadProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
+        }
+      });
       setAttachments([...response.data.attachments, ...attachments]);
       setSelectedFiles([]);
+      setUploadProgress(0);
     } catch (err) {
       console.error('Failed to upload:', err);
+      const status = err.response?.status;
+      if (status === 413) {
+        setUploadError('File troppo grande per il server. Riduci le dimensioni del file.');
+      } else if (!err.response) {
+        setUploadError('Errore di rete o timeout. Verifica la connessione e riprova con file più piccoli.');
+      } else {
+        setUploadError(err.response?.data?.message || 'Errore durante il caricamento. Riprova.');
+      }
     } finally {
       setUploading(false);
     }
@@ -307,12 +338,19 @@ function IssueDetail() {
 
             {isTecnico && (
               <div className="border-t pt-4">
+                {uploadError && (
+                  <div className="mb-2 flex items-start gap-2 bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm">
+                    <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                    <span>{uploadError}</span>
+                    <button onClick={() => setUploadError(null)} className="ml-auto shrink-0"><X size={14} /></button>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <label className="flex-1 cursor-pointer">
                     <input
                       type="file"
                       multiple
-                      onChange={handleFileSelect}
+                      onChange={(e) => { setUploadError(null); handleFileSelect(e); }}
                       className="hidden"
                       accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx"
                     />
@@ -327,15 +365,29 @@ function IssueDetail() {
                       disabled={uploading}
                       className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
                     >
-                      {uploading ? 'Caricamento...' : `Carica (${selectedFiles.length})`}
+                      {uploading ? `Caricamento ${uploadProgress}%` : `Carica (${selectedFiles.length})`}
                     </button>
                   )}
                 </div>
-                {selectedFiles.length > 0 && (
+                {uploading && (
+                  <div className="mt-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1 text-center">{uploadProgress}% caricato...</p>
+                  </div>
+                )}
+                {selectedFiles.length > 0 && !uploading && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {selectedFiles.map((file, i) => (
                       <span key={i} className="px-2 py-1 bg-gray-100 rounded text-xs flex items-center gap-1">
                         {file.name}
+                        {file.size > 50 * 1024 * 1024 && (
+                          <span className="text-amber-600 font-medium">({(file.size/1024/1024).toFixed(0)}MB)</span>
+                        )}
                         <button onClick={() => setSelectedFiles(files => files.filter((_, idx) => idx !== i))}>
                           <X size={12} />
                         </button>

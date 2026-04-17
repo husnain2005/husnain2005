@@ -301,22 +301,6 @@ function Customers() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Codice Cliente *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.code}
-                    onChange={(e) => handleChange('code', e.target.value)}
-                    disabled={!!editCustomer}
-                    placeholder="es. CLI001"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100"
-                  />
-                  {editCustomer && (
-                    <p className="text-xs text-gray-400 mt-1">Il codice non può essere modificato</p>
-                  )}
-                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Nome *

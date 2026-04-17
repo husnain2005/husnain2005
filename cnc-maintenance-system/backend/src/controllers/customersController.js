@@ -153,25 +153,25 @@ const createCustomer = async (req, res) => {
       notes
     } = req.body;
 
-    if (!code || !name) {
+    if (!name) {
       return res.status(400).json({
         error: 'Dati mancanti',
-        message: 'Codice e nome cliente sono obbligatori'
+        message: 'Il nome cliente è obbligatorio'
       });
     }
 
-    // Check for duplicate code
-    const existing = await db.query(
-      'SELECT id FROM customers WHERE code = $1',
-      [code]
+    // Genera automaticamente il codice cliente
+    const lastCode = await db.query(
+      "SELECT code FROM customers WHERE code ~ '^CLI[0-9]+$' ORDER BY CAST(SUBSTRING(code FROM 4) AS INTEGER) DESC LIMIT 1"
     );
-
-    if (existing.rows.length > 0) {
-      return res.status(409).json({
-        error: 'Duplicato',
-        message: 'Un cliente con questo codice esiste già'
-      });
+    let autoCode;
+    if (lastCode.rows.length > 0) {
+      const lastNum = parseInt(lastCode.rows[0].code.replace('CLI', ''), 10);
+      autoCode = `CLI${String(lastNum + 1).padStart(3, '0')}`;
+    } else {
+      autoCode = 'CLI001';
     }
+    const finalCode = code || autoCode;
 
     // Auto-geocodifica se non sono già fornite le coordinate
     let finalLat = latitude || null;
@@ -188,7 +188,7 @@ const createCustomer = async (req, res) => {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *
     `, [
-      code, name, address, city, province, country || 'Italia', postal_code,
+      finalCode, name, address, city, province, country || 'Italia', postal_code,
       phone, email, vat_number, finalLat, finalLng, notes, req.user.id
     ]);
 

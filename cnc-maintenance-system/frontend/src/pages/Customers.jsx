@@ -4,7 +4,7 @@ import { customersApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
   Search, Plus, Building2, MapPin, Phone, Mail, Wrench,
-  X, AlertTriangle, CheckCircle, Edit, Trash2
+  X, AlertTriangle, CheckCircle, Edit, Trash2, RefreshCw
 } from 'lucide-react';
 
 const COUNTRIES = [
@@ -25,6 +25,7 @@ function Customers() {
   const [notification, setNotification] = useState(null);
   const [formError, setFormError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [geocodingId, setGeocodingId] = useState(null);
 
   const emptyForm = {
     code: '',
@@ -105,6 +106,23 @@ function Customers() {
       setFormError(err.response?.data?.message || 'Errore durante il salvataggio');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleGeocode = async (customer, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setGeocodingId(customer.id);
+    try {
+      await customersApi.geocode(customer.id);
+      setNotification({ type: 'success', message: `Coordinate aggiornate per ${customer.name}` });
+      await loadCustomers();
+      setTimeout(() => setNotification(null), 4000);
+    } catch (err) {
+      setNotification({ type: 'error', message: 'Errore durante il calcolo delle coordinate' });
+      setTimeout(() => setNotification(null), 5000);
+    } finally {
+      setGeocodingId(null);
     }
   };
 
@@ -257,21 +275,34 @@ function Customers() {
                 )}
               </div>
 
-              <div className="mt-4 pt-4 border-t flex justify-between">
+              <div className="mt-4 pt-4 border-t flex justify-between items-center">
                 <Link
                   to={`/machines?customer_id=${customer.id}`}
                   className="text-sm text-primary-600 hover:underline"
                 >
                   Vedi macchine ({customer.machines_count || 0})
                 </Link>
-                {customer.latitude && customer.longitude && (
-                  <Link
-                    to={`/map?lat=${customer.latitude}&lng=${customer.longitude}`}
-                    className="text-sm text-primary-600 hover:underline"
-                  >
-                    Mappa
-                  </Link>
-                )}
+                <div className="flex items-center gap-2">
+                  {!customer.latitude && (isTecnico || isAdmin) && (
+                    <button
+                      onClick={(e) => handleGeocode(customer, e)}
+                      disabled={geocodingId === customer.id}
+                      className="text-sm text-orange-500 hover:text-orange-700 flex items-center gap-1"
+                      title="Ricalcola coordinate"
+                    >
+                      <RefreshCw size={13} className={geocodingId === customer.id ? 'animate-spin' : ''} />
+                      {geocodingId === customer.id ? 'Calcolo...' : 'Mappa'}
+                    </button>
+                  )}
+                  {customer.latitude && customer.longitude && (
+                    <Link
+                      to={`/map?lat=${customer.latitude}&lng=${customer.longitude}`}
+                      className="text-sm text-primary-600 hover:underline"
+                    >
+                      Mappa
+                    </Link>
+                  )}
+                </div>
               </div>
             </div>
           ))}

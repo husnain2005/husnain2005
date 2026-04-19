@@ -173,4 +173,18 @@ export const interventionsApi = {
   deleteDocument: (id, docId) => api.delete(`/interventions/${id}/documents/${docId}`),
 };
 
+export const telemetryApi = {
+  getLatest:  (machineId) => api.get(`/telemetry/${machineId}/latest`),
+  getHistory: (machineId, sensor, hours = 1) =>
+    api.get(`/telemetry/${machineId}/history`, { params: { sensor, hours } }),
+  getAlerts:  (machineId, resolved = false) =>
+    api.get(`/telemetry/${machineId}/alerts`, { params: { resolved } }),
+  acknowledgeAlert: (machineId, alertId) =>
+    api.post(`/telemetry/${machineId}/alerts/${alertId}/acknowledge`),
+  getSensors: (machineId) => api.get(`/telemetry/${machineId}/sensors`),
+  updateSensor: (machineId, sensorId, data) =>
+    api.put(`/telemetry/${machineId}/sensors/${sensorId}`, data),
+  getOverview: () => api.get('/telemetry/overview'),
+};
+
 export default api;

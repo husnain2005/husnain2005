@@ -19,7 +19,9 @@ const auditRoutes = require('./routes/audit');
 const interventionsRoutes = require('./routes/interventions');
 const backupRoutes = require('./routes/backup');
 const presenceRoutes = require('./routes/presence');
+const telemetryRoutes = require('./routes/telemetry');
 const { initBackupScheduler } = require('./controllers/backupController');
+const { initMqtt } = require('./services/mqttService');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -98,6 +100,7 @@ app.use('/api/audit', auditRoutes);
 app.use('/api/interventions', interventionsRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/presence', presenceRoutes);
+app.use('/api/telemetry', telemetryRoutes);
 
 // Serve uploaded files (in production, use nginx)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -123,6 +126,7 @@ app.use((err, req, res, next) => {
 
 // ─── Start Server ────────────────────────────────────────────────────────────
 initBackupScheduler();
+initMqtt();
 
 app.listen(PORT, () => {
   console.log(`

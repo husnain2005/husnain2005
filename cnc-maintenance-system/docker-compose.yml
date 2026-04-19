@@ -25,6 +25,32 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # MQTT Broker (Mosquitto)
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: cnc_mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"   # TCP  — PLC si connette qui
+      - "9001:9001"   # WebSocket — tool di debug browser
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/log
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_pub -h localhost -t health -m ping -q 0 2>/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   # Backend API
   backend:
     build:
@@ -35,12 +61,16 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mosquitto:
+        condition: service_healthy
     env_file:
       - .env
     environment:
       NODE_ENV: production
       PORT: 3001
       DB_HOST: db
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
       DB_PORT: 5432
       DB_NAME: ${POSTGRES_DB:-cnc_maintenance}
       DB_USER: ${POSTGRES_USER:-postgres}
@@ -100,3 +130,7 @@ volumes:
     name: cnc_uploads_data
   backups_data:
     name: cnc_backups_data
+  mosquitto_data:
+    name: cnc_mosquitto_data
+  mosquitto_logs:
+    name: cnc_mosquitto_logs

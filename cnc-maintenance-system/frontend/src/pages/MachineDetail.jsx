@@ -19,7 +19,8 @@ import {
   Save,
   X,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Activity
 } from 'lucide-react';
 
 function MachineDetail() {
@@ -256,6 +257,13 @@ function MachineDetail() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              to={`/machines/${id}/monitoring`}
+              className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            >
+              <Activity size={18} />
+              Monitoraggio
+            </Link>
             {isTecnico && !editMode && (
               <button
                 onClick={() => setEditMode(true)}

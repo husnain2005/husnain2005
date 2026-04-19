@@ -40,6 +40,42 @@ services:
       - internal
 
   # ---------------------------------------------------------------------------
+  # MQTT Broker (Mosquitto)
+  # ---------------------------------------------------------------------------
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: cnc_mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"   # TCP  — PLC si connette qui dall'esterno
+      - "9001:9001"   # WebSocket
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/log
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_pub -h localhost -t health -m ping -q 0 2>/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - internal
+      - public   # esposto per il PLC esterno
+
+  # ---------------------------------------------------------------------------
   # Backend Node.js
   # ---------------------------------------------------------------------------
   backend:
@@ -50,6 +86,8 @@ services:
     restart: unless-stopped
     depends_on:
       db:
+        condition: service_healthy
+      mosquitto:
         condition: service_healthy
     environment:
       NODE_ENV:      production
@@ -64,6 +102,8 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
       UPLOAD_DIR:    /app/uploads
       BACKUP_DIR:    /app/backups
+      MQTT_HOST:     mosquitto
+      MQTT_PORT:     1883
       MAX_FILE_SIZE: ${MAX_FILE_SIZE:-10485760}
       # Email
       SMTP_PROVIDER: ${SMTP_PROVIDER:-gmail}
@@ -197,6 +237,10 @@ volumes:
     name: cnc_backups_data
   frontend_build:
     name: cnc_frontend_build
+  mosquitto_data:
+    name: cnc_mosquitto_data
+  mosquitto_logs:
+    name: cnc_mosquitto_logs
 
 # =============================================================================
 # Reti

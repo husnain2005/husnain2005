@@ -19,6 +19,7 @@ import Interventions from './pages/Interventions';
 import InterventionDetail from './pages/InterventionDetail';
 import InterventionCreate from './pages/InterventionCreate';
 import Backup from './pages/Backup';
+import MachineMonitoring from './pages/MachineMonitoring';
 
 // Protected Route wrapper
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
@@ -70,6 +71,7 @@ function App() {
         <Route path="machines" element={<Machines />} />
         <Route path="machines/new" element={<MachineCreate />} />
         <Route path="machines/:id" element={<MachineDetail />} />
+        <Route path="machines/:id/monitoring" element={<MachineMonitoring />} />
         <Route path="issues" element={<Issues />} />
         <Route path="issues/new" element={<IssueCreate />} />
         <Route path="issues/:id" element={<IssueDetail />} />

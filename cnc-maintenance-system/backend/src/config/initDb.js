@@ -437,6 +437,67 @@ const initializeDatabase = async () => {
     `);
 
     // =============================================
+    // TELEMETRIA MQTT — SENSOR DEFINITIONS
+    // =============================================
+    console.log('Creating sensor_definitions table...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS sensor_definitions (
+        id SERIAL PRIMARY KEY,
+        machine_id INTEGER REFERENCES machines(id) ON DELETE CASCADE,
+        sensor_key VARCHAR(100) NOT NULL,
+        sensor_name VARCHAR(200) NOT NULL,
+        unit VARCHAR(50),
+        min_normal DECIMAL(12,4),
+        max_normal DECIMAL(12,4),
+        min_warning DECIMAL(12,4),
+        max_warning DECIMAL(12,4),
+        min_critical DECIMAL(12,4),
+        max_critical DECIMAL(12,4),
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(machine_id, sensor_key)
+      );
+    `);
+
+    // =============================================
+    // TELEMETRIA MQTT — SENSOR READINGS (time-series)
+    // =============================================
+    console.log('Creating sensor_readings table...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS sensor_readings (
+        id BIGSERIAL PRIMARY KEY,
+        machine_id INTEGER REFERENCES machines(id) ON DELETE CASCADE,
+        sensor_key VARCHAR(100) NOT NULL,
+        value DECIMAL(15,4),
+        value_text VARCHAR(100),
+        recorded_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // =============================================
+    // TELEMETRIA MQTT — SENSOR ALERTS
+    // =============================================
+    console.log('Creating sensor_alerts table...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS sensor_alerts (
+        id SERIAL PRIMARY KEY,
+        machine_id INTEGER REFERENCES machines(id) ON DELETE CASCADE,
+        sensor_key VARCHAR(100) NOT NULL,
+        sensor_name VARCHAR(200),
+        alert_level VARCHAR(20) NOT NULL CHECK (alert_level IN ('warning', 'critical')),
+        value DECIMAL(15,4),
+        threshold DECIMAL(15,4),
+        message TEXT,
+        is_active BOOLEAN DEFAULT true,
+        triggered_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        resolved_at TIMESTAMP WITH TIME ZONE,
+        acknowledged_by INTEGER REFERENCES users(id),
+        acknowledged_at TIMESTAMP WITH TIME ZONE
+      );
+    `);
+
+    // =============================================
     // AUDIT LOG TABLE
     // =============================================
     console.log('Creating audit_log table...');
@@ -488,6 +549,12 @@ const initializeDatabase = async () => {
     await client.query('CREATE INDEX IF NOT EXISTS idx_interventions_scheduled ON interventions(scheduled_date);');
     await client.query('CREATE INDEX IF NOT EXISTS idx_intervention_days_date ON intervention_days(work_date);');
     await client.query('CREATE INDEX IF NOT EXISTS idx_intervention_materials_intervention ON intervention_materials(intervention_id);');
+
+    // Telemetry indexes
+    await client.query('CREATE INDEX IF NOT EXISTS idx_sensor_readings_machine_sensor_time ON sensor_readings(machine_id, sensor_key, recorded_at DESC);');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_sensor_readings_recorded_at ON sensor_readings(recorded_at DESC);');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_sensor_alerts_machine_active ON sensor_alerts(machine_id, is_active);');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_sensor_definitions_machine ON sensor_definitions(machine_id);');
 
     // =============================================
     // INSERT DEFAULT DATA

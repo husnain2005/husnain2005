@@ -11,7 +11,7 @@
 
 const mqtt = require('mqtt');
 const db   = require('../config/database');
-const logger = require('../config/logger');
+const { logger } = require('../config/logger');
 
 // ─── Soglie di default per sensori noti ──────────────────────────────────────
 const DEFAULT_SENSOR_DEFS = {

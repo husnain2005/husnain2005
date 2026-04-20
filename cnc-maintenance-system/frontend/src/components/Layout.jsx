@@ -17,7 +17,8 @@ import {
   ChevronDown,
   Calendar,
   UserCircle,
-  DatabaseBackup
+  DatabaseBackup,
+  Activity
 } from 'lucide-react';
 
 const navItems = [
@@ -28,6 +29,7 @@ const navItems = [
   { path: '/customers', icon: Building2, label: 'Clienti' },
   { path: '/map', icon: MapPin, label: 'Mappa' },
   { path: '/pdf-import', icon: FileText, label: 'Import PDF' },
+  { path: '/monitoring', icon: Activity, label: 'Monitoraggio' },
 ];
 
 const adminItems = [

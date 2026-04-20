@@ -20,6 +20,7 @@ import InterventionDetail from './pages/InterventionDetail';
 import InterventionCreate from './pages/InterventionCreate';
 import Backup from './pages/Backup';
 import MachineMonitoring from './pages/MachineMonitoring';
+import Monitoring from './pages/Monitoring';
 
 // Protected Route wrapper
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
@@ -91,6 +92,7 @@ function App() {
             <Backup />
           </ProtectedRoute>
         } />
+        <Route path="monitoring" element={<Monitoring />} />
         <Route path="profile" element={<Profile />} />
       </Route>
 

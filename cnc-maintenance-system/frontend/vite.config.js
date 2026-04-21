@@ -1,8 +1,16 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import path from 'path';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      // Prevent mqtt (browser WebSocket client) from being bundled.
+      // The frontend uses REST polling; MQTT is backend-only.
+      'mqtt': path.resolve(__dirname, 'src/mqtt-stub.js'),
+    },
+  },
   plugins: [
     react(),
     VitePWA({

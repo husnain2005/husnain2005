@@ -216,7 +216,7 @@ export default function MachineMonitoring() {
 
   // ─── Carica dati macchina una volta sola ──────────────────────────────────
   useEffect(() => {
-    machinesApi.getById(id).then(res => setMachine(res.data)).catch(() => {});
+    machinesApi.getById(id).then(res => setMachine(res.data.machine)).catch(() => {});
   }, [id]);
 
   // ─── Polling dati live ────────────────────────────────────────────────────

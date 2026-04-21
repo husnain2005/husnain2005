@@ -9,8 +9,9 @@ import { it } from 'date-fns/locale';
 import {
   ArrowLeft, Activity, AlertTriangle, AlertCircle,
   CheckCircle, Clock, Wifi, WifiOff, Settings, Bell,
+  Wrench, TrendingUp, FileWarning,
 } from 'lucide-react';
-import { telemetryApi, machinesApi } from '../services/api';
+import { telemetryApi, machinesApi, issuesApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 // ─── Costanti ────────────────────────────────────────────────────────────────
@@ -211,12 +212,17 @@ export default function MachineMonitoring() {
   const [online,    setOnline]    = useState(false);
   const [loading,   setLoading]   = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [activeTab, setActiveTab] = useState('sensori');
+  const [issues,    setIssues]    = useState([]);
 
   const pollRef = useRef(null);
 
-  // ─── Carica dati macchina una volta sola ──────────────────────────────────
+  // ─── Carica dati macchina + issues ───────────────────────────────────────
   useEffect(() => {
-    machinesApi.getById(id).then(res => setMachine(res.data.machine)).catch(() => {});
+    machinesApi.getById(id).then(res => {
+      setMachine(res.data.machine);
+      setIssues(res.data.issues || []);
+    }).catch(() => {});
   }, [id]);
 
   // ─── Polling dati live ────────────────────────────────────────────────────
@@ -378,6 +384,25 @@ export default function MachineMonitoring() {
         )}
       </div>
 
+      {/* Tab navigation */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+        {[
+          { key: 'sensori',       label: 'Sensori',         icon: Activity      },
+          { key: 'fault',         label: 'Fault Log',       icon: FileWarning   },
+          { key: 'manutenzione',  label: 'Manutenzione',    icon: Wrench        },
+        ].map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={`flex items-center gap-2 flex-1 justify-center py-2 px-3 rounded-lg text-sm font-medium transition-all
+              ${activeTab === key ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <Icon size={15} />
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Alert attivi */}
       {alerts.length > 0 && (
         <AlertBanner alerts={alerts} onAcknowledge={handleAcknowledge} />
@@ -510,12 +535,197 @@ export default function MachineMonitoring() {
       )}
 
       {/* Pannello impostazioni soglie */}
-      {showSettings && isTecnico && sensors.length > 0 && (
+      {activeTab === 'sensori' && showSettings && isTecnico && sensors.length > 0 && (
         <ThresholdSettings
           machineId={id}
           sensors={sensors}
           onSaved={fetchLatest}
         />
+      )}
+
+      {/* ── TAB: FAULT LOG ── */}
+      {activeTab === 'fault' && (
+        <div className="space-y-3">
+          <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+            <FileWarning size={18} className="text-orange-500" />
+            Ultimi fault e problematiche
+          </h3>
+          {issues.length === 0 ? (
+            <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl text-gray-400">
+              <FileWarning size={36} className="mx-auto mb-2 opacity-30" />
+              <p>Nessun fault registrato per questa macchina</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100 bg-white rounded-xl border border-gray-200 overflow-hidden">
+              {issues.map(issue => {
+                const statusColor = {
+                  open:        'bg-red-100 text-red-700',
+                  in_progress: 'bg-yellow-100 text-yellow-700',
+                  resolved:    'bg-green-100 text-green-700',
+                  closed:      'bg-gray-100 text-gray-500',
+                }[issue.status] || 'bg-gray-100 text-gray-500';
+                const priorityColor = {
+                  critical: 'text-red-600',
+                  high:     'text-orange-500',
+                  medium:   'text-yellow-600',
+                  low:      'text-gray-400',
+                }[issue.priority] || 'text-gray-400';
+                return (
+                  <div key={issue.id} className="p-4 hover:bg-gray-50">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <AlertTriangle size={14} className={priorityColor} />
+                          <p className="font-medium text-gray-800 truncate">{issue.title}</p>
+                        </div>
+                        {issue.description && (
+                          <p className="text-sm text-gray-500 line-clamp-2">{issue.description}</p>
+                        )}
+                        <p className="text-xs text-gray-400 mt-1">
+                          {issue.issue_group_name && `${issue.issue_group_name} · `}
+                          {formatDateTime(issue.created_at)}
+                          {issue.assigned_to_name && ` · Assegnato: ${issue.assigned_to_name}`}
+                        </p>
+                      </div>
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${statusColor}`}>
+                        {issue.status === 'open' ? 'Aperto' :
+                         issue.status === 'in_progress' ? 'In corso' :
+                         issue.status === 'resolved' ? 'Risolto' : 'Chiuso'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB: MANUTENZIONE PREDITTIVA ── */}
+      {activeTab === 'manutenzione' && (
+        <div className="space-y-4">
+          <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+            <TrendingUp size={18} className="text-blue-500" />
+            Suggerimenti manutenzione predittiva
+          </h3>
+
+          {/* Regole basate su sensori */}
+          {(() => {
+            const suggestions = [];
+
+            sensors.forEach(s => {
+              const v = parseFloat(s.current_value);
+              if (s.current_value === null) return;
+
+              if (s.sensor_key === 'temp_olio' && v > 55) {
+                suggestions.push({
+                  id: 'temp_olio',
+                  priority: v > 70 ? 'alta' : 'media',
+                  title: 'Controllo sistema raffreddamento olio',
+                  detail: `Temperatura olio attuale: ${v.toFixed(1)}°C. Verificare livello olio, filtri e radiatore.`,
+                  icon: '🌡️',
+                });
+              }
+              if (s.sensor_key === 'vibrazione' && v > 3.5) {
+                suggestions.push({
+                  id: 'vibrazione',
+                  priority: v > 5 ? 'alta' : 'media',
+                  title: 'Ispezione cuscinetti e bilanciamento mandrino',
+                  detail: `Vibrazione rilevata: ${v.toFixed(2)} mm/s. Controllare cuscinetti, serraggio utensili e bilanciatura.`,
+                  icon: '⚙️',
+                });
+              }
+              if (s.sensor_key === 'corrente_motore' && v > 18) {
+                suggestions.push({
+                  id: 'corrente_motore',
+                  priority: v > 22 ? 'alta' : 'media',
+                  title: 'Verifica motore e trasmissione',
+                  detail: `Corrente motore elevata: ${v.toFixed(1)}A. Controllare lubrificazione, usura utensili e carico.`,
+                  icon: '⚡',
+                });
+              }
+              if (s.sensor_key === 'pressione_idraulica' && v < 60) {
+                suggestions.push({
+                  id: 'pressione_idraulica',
+                  priority: v < 40 ? 'alta' : 'media',
+                  title: 'Controllo impianto idraulico',
+                  detail: `Pressione idraulica bassa: ${v.toFixed(1)} bar. Verificare pompa, filtri e possibili perdite.`,
+                  icon: '💧',
+                });
+              }
+              if (s.sensor_key === 'ore_funzionamento' && v > 0 && v % 500 < 10) {
+                suggestions.push({
+                  id: 'ore_manutenzione',
+                  priority: 'bassa',
+                  title: `Manutenzione programmata — ${Math.floor(v/500)*500}h`,
+                  detail: `La macchina ha raggiunto ${v.toFixed(0)} ore di funzionamento. Eseguire la manutenzione periodica prevista.`,
+                  icon: '🔧',
+                });
+              }
+            });
+
+            // Suggerimenti basati su alert frequenti
+            const criticalAlerts = alerts.filter(a => a.alert_level === 'critical');
+            if (criticalAlerts.length >= 2) {
+              suggestions.push({
+                id: 'multi_alert',
+                priority: 'alta',
+                title: 'Intervento urgente — alert multipli attivi',
+                detail: `Ci sono ${criticalAlerts.length} alert critici attivi. Richiedere ispezione tecnica immediata.`,
+                icon: '🚨',
+              });
+            }
+
+            // Issues aperte recenti
+            const openIssues = issues.filter(i => i.status === 'open' || i.status === 'in_progress');
+            if (openIssues.length > 0) {
+              suggestions.push({
+                id: 'open_issues',
+                priority: 'media',
+                title: `${openIssues.length} problematic${openIssues.length > 1 ? 'he' : 'a'} aperta${openIssues.length > 1 ? '' : ''}`,
+                detail: openIssues.map(i => i.title).join(' · '),
+                icon: '📋',
+              });
+            }
+
+            if (suggestions.length === 0) {
+              return (
+                <div className="text-center py-12 border-2 border-dashed border-green-200 rounded-xl bg-green-50">
+                  <CheckCircle size={36} className="mx-auto mb-2 text-green-500" />
+                  <p className="font-medium text-green-700">Nessuna anomalia rilevata</p>
+                  <p className="text-sm text-green-600 mt-1">La macchina opera nei parametri normali</p>
+                </div>
+              );
+            }
+
+            const priorityOrder = { alta: 0, media: 1, bassa: 2 };
+            const priorityStyle = {
+              alta:  { bg: 'bg-red-50',    border: 'border-red-200',    badge: 'bg-red-100 text-red-700',    label: 'Alta priorità'  },
+              media: { bg: 'bg-yellow-50', border: 'border-yellow-200', badge: 'bg-yellow-100 text-yellow-700', label: 'Media priorità' },
+              bassa: { bg: 'bg-blue-50',   border: 'border-blue-200',   badge: 'bg-blue-100 text-blue-700',   label: 'Bassa priorità' },
+            };
+
+            return suggestions
+              .sort((a,b) => priorityOrder[a.priority] - priorityOrder[b.priority])
+              .map(s => {
+                const st = priorityStyle[s.priority];
+                return (
+                  <div key={s.id} className={`${st.bg} border ${st.border} rounded-xl p-4`}>
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl">{s.icon}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-semibold text-gray-800">{s.title}</p>
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${st.badge}`}>{st.label}</span>
+                        </div>
+                        <p className="text-sm text-gray-600">{s.detail}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              });
+          })()}
+        </div>
       )}
     </div>
   );

@@ -409,7 +409,7 @@ export default function MachineMonitoring() {
       )}
 
       {/* Nessun dato */}
-      {sensors.length === 0 && (
+      {activeTab === 'sensori' && sensors.length === 0 && (
         <div className="text-center py-16 text-gray-400 border-2 border-dashed border-gray-200 rounded-xl">
           <Activity size={40} className="mx-auto mb-3 opacity-30" />
           <p className="font-medium">Nessun dato telemetrico ricevuto</p>
@@ -423,7 +423,7 @@ export default function MachineMonitoring() {
       )}
 
       {/* Griglia sensori */}
-      {sensors.length > 0 && (
+      {activeTab === 'sensori' && sensors.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {sensors.map(sensor => (
             <SensorCard
@@ -437,7 +437,7 @@ export default function MachineMonitoring() {
       )}
 
       {/* Grafico storico */}
-      {sensors.length > 0 && selectedDef && (
+      {activeTab === 'sensori' && sensors.length > 0 && selectedDef && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
             <div>
